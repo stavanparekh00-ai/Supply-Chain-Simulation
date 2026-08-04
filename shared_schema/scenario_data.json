@@ -6,6 +6,10 @@
     "notes": "Illustrative synthetic scenario data. Tariff baseline/spike figures are grounded in real 2025-2026 Section 301 semiconductor tariff policy (25% -> 50% doubling precedent, further escalation actions in motion); all other figures (costs, capacities, transport costs, facility fixed costs) are invented for modeling purposes and are not sourced from real supplier contracts."
   },
 
+  "demand_generation_methodology": {
+    "description": "Both historical_demand_last_8_weeks and actual_demand_ground_truth_by_week are generated the same way: weekly_demand (the fixed baseline) multiplied by a noise factor drawn from a uniform distribution on [0.8, 1.2] (i.e. +/-20%), rounded to a whole unit. The demand-spike disruption (week 6, C5, x1.5) is layered multiplicatively on top of this noise for that specific customer-week only. Generated ONCE via a seeded random process, then frozen -- identical for every participant and every forecasting method, exactly like the disruption schedule. Actual demand is intentionally generated independently of any forecasting method's prediction: forecasting methods are scored on how well they predict this fixed, pre-existing ground truth from historical data alone, not the other way around. This preserves comparability across participants and keeps the solve-once-per-forecasting-method Oracle architecture valid, since every method faces the same underlying reality."
+  },
+
   "suppliers": [
     {
       "id": "domestic_fab",
@@ -57,12 +61,36 @@
   ],
 
   "customers": [
-    {"id": "C1", "weekly_demand": 30, "historical_demand_last_8_weeks": [27, 29, 32, 29, 32, 28, 30, 33]},
-    {"id": "C2", "weekly_demand": 45, "historical_demand_last_8_weeks": [41, 50, 45, 50, 52, 45, 40, 45]},
-    {"id": "C3", "weekly_demand": 25, "historical_demand_last_8_weeks": [25, 23, 28, 21, 21, 24, 29, 26]},
-    {"id": "C4", "weekly_demand": 35, "historical_demand_last_8_weeks": [34, 30, 31, 38, 38, 32, 40, 32]},
-    {"id": "C5", "weekly_demand": 28, "historical_demand_last_8_weeks": [30, 24, 27, 30, 31, 32, 27, 29]},
-    {"id": "C6", "weekly_demand": 40, "historical_demand_last_8_weeks": [40, 34, 46, 38, 41, 40, 43, 35]}
+    {
+      "id": "C1", "weekly_demand": 30,
+      "historical_demand_last_8_weeks": [27, 29, 32, 29, 32, 28, 30, 33],
+      "actual_demand_ground_truth_by_week": [31, 32, 34, 27, 32, 35, 35, 26, 32, 31]
+    },
+    {
+      "id": "C2", "weekly_demand": 45,
+      "historical_demand_last_8_weeks": [41, 50, 45, 50, 52, 45, 40, 45],
+      "actual_demand_ground_truth_by_week": [45, 53, 46, 44, 53, 47, 41, 42, 45, 37]
+    },
+    {
+      "id": "C3", "weekly_demand": 25,
+      "historical_demand_last_8_weeks": [25, 23, 28, 21, 21, 24, 29, 26],
+      "actual_demand_ground_truth_by_week": [26, 27, 24, 28, 29, 26, 27, 21, 21, 30]
+    },
+    {
+      "id": "C4", "weekly_demand": 35,
+      "historical_demand_last_8_weeks": [34, 30, 31, 38, 38, 32, 40, 32],
+      "actual_demand_ground_truth_by_week": [32, 31, 41, 38, 30, 33, 31, 32, 28, 35]
+    },
+    {
+      "id": "C5", "weekly_demand": 28,
+      "historical_demand_last_8_weeks": [30, 24, 27, 30, 31, 32, 27, 29],
+      "actual_demand_ground_truth_by_week": [26, 27, 24, 24, 23, 48, 31, 29, 24, 24]
+    },
+    {
+      "id": "C6", "weekly_demand": 40,
+      "historical_demand_last_8_weeks": [40, 34, 46, 38, 41, 40, 43, 35],
+      "actual_demand_ground_truth_by_week": [34, 37, 33, 36, 35, 35, 42, 39, 40, 38]
+    }
   ],
 
   "transport_cost_matrix": {

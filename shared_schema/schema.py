@@ -66,6 +66,14 @@ class Customer:
     id: str
     weekly_demand: float
     historical_demand_last_8_weeks: List[float]
+    actual_demand_ground_truth_by_week: List[float]
+    """Fixed, frozen ground-truth demand for the simulation horizon (one value
+    per week). Generated independently of any forecasting method so that
+    every participant and every forecast choice is scored against the same
+    underlying reality. This must never be exposed to a player or to the
+    Oracle's decision-time logic before that week has actually played out --
+    it exists here only for the realized-cost recursion (see the model doc,
+    Section 4: "The Realized-Cost Recursion")."""
 
 
 @dataclass(frozen=True)
@@ -169,6 +177,13 @@ class ScenarioData:
     def disruptions_in_week(self, week: int) -> List[DisruptionEvent]:
         return [d for d in self.disruption_schedule if d.week == week]
 
+    def actual_demand(self, customer_id: str, week: int) -> float:
+        """Ground-truth demand for a customer in a given week (1-indexed).
+        Only for use in the realized-cost recursion, AFTER a period's
+        decisions have already been made -- never as a decision-time input."""
+        series = self.customer_by_id(customer_id).actual_demand_ground_truth_by_week
+        return series[week - 1]
+
 
 # ---------------------------------------------------------------------------
 # Loader
@@ -240,3 +255,5 @@ if __name__ == "__main__":
     overseas = data.supplier_by_id("overseas_manufacturer")
     print(f"Overseas landed cost normally: ${overseas.landed_unit_cost()}, "
           f"during tariff spike: ${overseas.landed_unit_cost(tariff_pct_override=100)}")
+    print(f"C5 actual demand, week 6 (demand spike week): {data.actual_demand('C5', 6)}")
+    print(f"C5 actual demand, week 5 (normal week): {data.actual_demand('C5', 5)}")

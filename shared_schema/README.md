@@ -19,6 +19,35 @@ load data through this exact same function, from this exact same file,
 means there is no code path by which one side could accidentally receive
 different or additional information.
 
+## No-lookahead safety
+
+`scenario_data.json` stores the *entire* frozen 10-week actual-demand series
+and disruption schedule up front, because both were generated once via a
+seeded random process and frozen (see `demand_generation_methodology` in the
+JSON). That's necessary for reproducibility, but it means the raw fields
+(`Customer.actual_demand_ground_truth_by_week`, `ScenarioData.disruption_schedule`)
+technically contain future information a player or the Oracle must never see
+before it happens.
+
+`schema.py` provides safe, week-scoped accessors that make this structurally
+impossible to violate by accident, rather than relying on remembering not to
+peek:
+
+- `demand_history_available_for_forecast(customer_id, current_week)` — only
+  the pre-simulation history plus whatever weeks have already played out.
+- `disruptions_in_week(week)` / `disruptions_revealed_through(current_week)` —
+  only disruptions that have happened by that point.
+- `actual_demand(customer_id, week)` — ground truth for one already-played
+  week, for scoring only, never for forecasting or deciding.
+
+**Any Oracle or simulation code built later must go through these methods
+only** — never iterate `disruption_schedule` or read
+`actual_demand_ground_truth_by_week` directly from decision-time logic. This
+project already caught one real bug from exactly this category (the Oracle
+originally used perfect hindsight before being corrected to
+same-information, no-lookahead) — these accessors exist so that mistake is
+structurally impossible to repeat, rather than just documented against.
+
 ## What's in here
 
 - `scenario_data.json` — the finalized scenario dataset: suppliers, candidate

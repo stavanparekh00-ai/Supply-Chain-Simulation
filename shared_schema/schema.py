@@ -174,13 +174,62 @@ class ScenarioData:
                 return c
         raise KeyError(f"No customer with id={customer_id!r}")
 
+    # -----------------------------------------------------------------
+    # SAFE, no-lookahead accessors.
+    #
+    # `Customer.actual_demand_ground_truth_by_week` and `disruption_schedule`
+    # must never be read directly by decision-time code (the Oracle's
+    # optimization logic, or anything feeding a player's screen) -- only
+    # through the methods below. This is a deliberate structural guardrail,
+    # not just a convention to remember: this project already caught one
+    # real bug from exactly this category (the Oracle originally used
+    # perfect hindsight before being corrected to same-information,
+    # no-lookahead). These methods make that mistake impossible to repeat
+    # by construction, since they physically cannot return data past the
+    # requested week.
+    # -----------------------------------------------------------------
+
+    def demand_history_available_for_forecast(self, customer_id: str, current_week: int) -> List[float]:
+        """Demand history usable for forecasting BEFORE deciding orders in
+        `current_week`: the pre-simulation historical window, plus every
+        week's actual demand already revealed by having lived through weeks
+        1..current_week-1. Does NOT include current_week's own actual demand
+        (it hasn't happened yet at decision time) or any future week.
+
+        This is the only demand-history input either the player or the
+        Oracle's forecasting logic should ever receive. As the simulation
+        progresses, this window grows -- e.g. by week 5, it includes the
+        original historical weeks plus the actual outcomes of weeks 1-4,
+        letting forecasts improve/adapt with more revealed data, never with
+        data from the future.
+        """
+        if current_week < 1:
+            raise ValueError("current_week must be >= 1")
+        customer = self.customer_by_id(customer_id)
+        already_revealed = customer.actual_demand_ground_truth_by_week[: current_week - 1]
+        return customer.historical_demand_last_8_weeks + already_revealed
+
     def disruptions_in_week(self, week: int) -> List[DisruptionEvent]:
+        """Disruption(s), if any, that occur exactly in this week -- use this
+        to decide what disruption alert (if any) to surface on a period's
+        decision screen. Never iterate `self.disruption_schedule` directly
+        from decision-time or player-facing code, since that would expose
+        future disruptions before they happen."""
         return [d for d in self.disruption_schedule if d.week == week]
+
+    def disruptions_revealed_through(self, current_week: int) -> List[DisruptionEvent]:
+        """All disruptions a participant could know about by having lived
+        through weeks 1..current_week (inclusive) -- e.g. for an end-of-run
+        or "disruptions so far" summary. Never includes future disruptions."""
+        return [d for d in self.disruption_schedule if d.week <= current_week]
 
     def actual_demand(self, customer_id: str, week: int) -> float:
         """Ground-truth demand for a customer in a given week (1-indexed).
-        Only for use in the realized-cost recursion, AFTER a period's
-        decisions have already been made -- never as a decision-time input."""
+        Only for use in the realized-cost recursion, AFTER that week's
+        decisions have already been made and the week has played out --
+        never as a decision-time or forecasting input. Use
+        `demand_history_available_for_forecast` instead for anything
+        forecasting- or decision-related."""
         series = self.customer_by_id(customer_id).actual_demand_ground_truth_by_week
         return series[week - 1]
 
@@ -257,3 +306,17 @@ if __name__ == "__main__":
           f"during tariff spike: ${overseas.landed_unit_cost(tariff_pct_override=100)}")
     print(f"C5 actual demand, week 6 (demand spike week): {data.actual_demand('C5', 6)}")
     print(f"C5 actual demand, week 5 (normal week): {data.actual_demand('C5', 5)}")
+
+    # No-lookahead safety checks
+    hist_week1 = data.demand_history_available_for_forecast("C5", current_week=1)
+    hist_week6 = data.demand_history_available_for_forecast("C5", current_week=6)
+    print(f"\nC5 history available when deciding week 1 ({len(hist_week1)} points): {hist_week1}")
+    print(f"C5 history available when deciding week 6 ({len(hist_week6)} points): {hist_week6}")
+    assert 48 not in hist_week6, "LOOKAHEAD BUG: week 6's own demand-spike value leaked into its own forecast history!"
+    print("OK: week 6's forecast history does not contain week 6's own (not-yet-revealed) actual demand.")
+
+    print(f"\nDisruptions visible going into week 3 (should be empty): {data.disruptions_revealed_through(3)}")
+    print(f"Disruptions visible going into week 4 (tariff spike just happened): "
+          f"{[(d.week, d.type) for d in data.disruptions_revealed_through(4)]}")
+    print(f"Disruptions visible going into week 8 (should NOT include week 9's capacity cut): "
+          f"{[(d.week, d.type) for d in data.disruptions_revealed_through(8)]}")

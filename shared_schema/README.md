@@ -57,6 +57,23 @@ structurally impossible to repeat, rather than just documented against.
   the loader function. Contains **no** optimization or simulation logic —
   that belongs in each project's own codebase.
 
+## Modeling decision: order quantities must be integers
+
+Order quantities ($O_{f,s,t}$) are constrained to whole numbers. This makes
+the per-period ordering model an integer program rather than a pure LP —
+a different, safer kind of integrality than the MOQ binary that was
+considered and dropped (MOQ's disjunctive feasible region could genuinely
+conflict with the diversification cap; plain integer bounds don't have
+that problem). See `hand_worked_test_cases.md` (Test Case 1) for a worked
+example showing why naively rounding a continuous LP solution is unsafe
+and the integer program must be solved directly.
+
+This affects both projects:
+- **Solver:** declare order-quantity decision variables as integer
+  (e.g. `LpInteger` in PuLP), not continuous.
+- **Simulation:** the player-facing order-quantity input fields must only
+  accept whole numbers (no decimals).
+
 ## Status
 
 This is a planning/data artifact. No solver or simulation logic has been

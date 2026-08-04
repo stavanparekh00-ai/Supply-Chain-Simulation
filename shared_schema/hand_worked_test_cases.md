@@ -44,21 +44,44 @@ Overseas is the cheapest supplier ($15), so the solver wants to use as much of i
 
 The naive "just meet k=3 and k=4's minimums directly" allocation (Domestic=55, Regional=120, Overseas=75) **violates the diversification cap**: 75 units of Overseas out of a 250 total is 30%, exceeding its 25% ceiling. This forces the solver to buy *more than the bare minimum* from the fast suppliers, specifically to raise the total order size enough that Overseas's fixed 25% share can still cover what's needed at k=4 — a real, non-obvious tension between the lead-time checkpoint constraint and the risk-diversification constraint.
 
-### Verified optimal solution
+### Order quantities must be integers (modeling decision, not a rounding preference)
+
+Order quantities are required to be whole numbers — this makes the per-period ordering model an **integer program**, not a pure LP. This is a different, safer kind of integrality than the MOQ binary that was dropped earlier: MOQ created a *disjunctive* feasible region (0, or ≥ MOQ, with a gap in between) that could genuinely conflict with the diversification cap. Plain integer-valued quantities don't have that problem — the feasible region is still one connected range, just restricted to whole numbers, so this doesn't reopen the earlier MOQ conflict.
+
+**Practical consequence for the LP relaxation shown below:** the continuous (LP-relaxation) optimum is *not* the final answer — naively rounding it can produce an infeasible or suboptimal result (see below), so the integer program must be solved directly.
+
+### LP relaxation (continuous, for reference only)
+
+| Supplier | LP-Relaxed Quantity |
+|---|---|
+| Domestic Fab | 67.5 |
+| Regional Partner | 120 |
+| Overseas Manufacturer | 62.5 |
+| **Total / Cost** | **250 / $4,072.50** |
+
+Naively rounding this (e.g. Overseas 62.5 → 63) is unsafe: 63 units out of a 250 total is 25.2%, which **violates** the 25% diversification cap. Rounding must respect the constraints jointly, not each number independently — which is exactly why the integer program needs to be solved directly rather than post-hoc rounded.
+
+### Verified integer-optimal solution
+
+Solved as a genuine integer program (verified via `scipy.optimize.milp`, independent of the eventual PuLP implementation):
 
 | Supplier | Order Quantity | Notes |
 |---|---|---|
-| Domestic Fab | **67.5 units** | Above its own k=1 minimum (25); makes up the balance needed once Regional is capped |
-| Regional Partner | **120 units** | At its capacity ceiling (binding) |
-| Overseas Manufacturer | **62.5 units** | Exactly 25% of the 250 total (diversification cap binding) |
+| Domestic Fab | **68 units** | Rounds up from the LP relaxation to keep the total at exactly 250 once Overseas rounds down |
+| Regional Partner | **120 units** | At its capacity ceiling (binding), unchanged from the LP relaxation |
+| Overseas Manufacturer | **62 units** | Rounds *down* from 62.5 — rounding up would violate the 25% diversification cap |
 | **Total** | **250 units** | Exactly meets the k=4 requirement (binding) |
 
-**Total procurement cost: $4,072.50** ($18×67.5 + $16×120 + $15×62.5)
+**Total procurement cost: $4,074.00** ($18×68 + $16×120 + $15×62) — only $1.50 more than the continuous LP relaxation's $4,072.50, a negligible "integrality gap" at this scale.
 
-Binding (tight) constraints: Regional's capacity, the Overseas diversification cap, and the k=4 checkpoint. Non-binding (slack): the k=1 requirement (67.5 ≫ 25) and the k=3 requirement (187.5 vs. required 175).
+Binding (tight) constraints: Regional's capacity, the Overseas diversification cap (62/250 = 24.8%, just under the 25% ceiling — 63 would have exceeded it), and the k=4 checkpoint. Non-binding (slack): the k=1 requirement (68 ≫ 25) and the k=3 requirement (188 vs. required 175).
 
-**Caveat:** this figure reflects only the procurement-cost-minimizing solution subject to the feasibility constraints; it does not fully account for the projected-holding-cost term (Term 2 of the objective) across the k=1-4 window, which could shift the true LP optimum by a small amount. The solver's actual output should match this solution's *qualitative structure* exactly (Regional capacity-bound, Overseas diversification-bound, Domestic making up the residual) and should be very close in magnitude — meaningful divergence from this structure, not just small numeric differences, is the signal to investigate a bug.
+**Caveat:** this figure reflects only the procurement-cost-minimizing integer solution subject to the feasibility constraints; it does not fully account for the projected-holding-cost term (Term 2 of the objective) across the k=1-4 window, which could shift the true optimum by a small amount. The solver's actual output should match this solution's *qualitative structure* exactly (Regional capacity-bound, Overseas diversification-bound just under its cap, Domestic making up the residual, all quantities whole numbers) and should be very close in magnitude — meaningful divergence from this structure, not just small numeric differences, is the signal to investigate a bug.
+
+### Sensitivity analysis implication
+
+Because order quantities are now integer-constrained, classical LP dual values (shadow prices) aren't strictly rigorous for the per-period stage anymore, the same caveat that applied when MOQ was still in the model. In practice this barely matters here — the integrality gap is only $1.50 out of $4,074, so the LP relaxation's dual values remain a very good *approximate* sensitivity signal. The parameter-sweep re-optimization method (already the primary recommended approach) is unaffected and gives the fully correct answer regardless of integrality.
 
 ### How to use this test case once the solver exists
 
-Assert that, given this exact input state, the solver's per-period ordering model returns order quantities matching the structure above (Regional at 120, Overseas at exactly 25% of its own total order, Domestic making up the rest), with total procurement cost within a small tolerance of $4,072.50.
+Assert that, given this exact input state, the solver's per-period ordering model returns **integer** order quantities matching this exact structure (Domestic=68, Regional=120, Overseas=62), with total procurement cost within a small tolerance of $4,074.00.

@@ -136,3 +136,30 @@ Test Case 1 (higher-demand F1) had Regional Partner bound by its **absolute capa
 ### How to use this test case once the solver exists
 
 Assert that, given F3's historical demand and this exact input state, the solver (a) computes the same 3-period moving average forecast (56/week), and (b) returns integer order quantities matching this structure (Domestic=44, Regional=87 at exactly 50% of total, Overseas=43), with total procurement cost within a small tolerance of $2,829.00.
+
+---
+
+## Test Case 3 — Facility F1, Weeks 1-5, Full Multi-Week Rolling-Horizon Trace
+
+Unlike Test Cases 1 and 2 (single-period snapshots), this case walks the full rolling-horizon mechanics forward through 5 weeks: forecast recomputed each week from growing revealed history, existing pipeline tracked and factored into checkpoint requirements, and actual (not forecasted) demand used to update on-hand/backlog via the realized-cost recursion. Extended to Week 4 specifically to exercise the tariff-spike disruption.
+
+### Week-by-week results
+
+| Week | Forecast | Domestic | Regional | Overseas | Total Ordered | Overseas Landed Cost | On-Hand (start) | Arriving | Actual Demand | On-Hand (end) | Backlog |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 74 | 65 | 120 | 61 | 246 | $15 | 100 | 65 | 76 | 89 | 0 |
+| 2 | 75 | 20 | 40 | 20 | 80 | $15 | 89 | 140 | 85 | 144 | 0 |
+| 3 | 80 | 27 | 52 | 26 | 105 | $15 | 144 | 67 | 80 | 131 | 0 |
+| 4 | 80 | 40 | 40 | **0** | 80 | **$20 (tariff spike)** | 131 | 153 | 71 | 213 | 0 |
+| 5 | 79 | 18 | 33 | 16 | 67 | $15 | 213 | 78 | 85 | 206 | 0 |
+
+### Key findings
+
+- **Week 1's forecast (74) differs slightly from Test Case 1's assumed flat 75** because this trace computes the forecast live via 3-period moving average on real historical data, rather than assuming a round number for simplicity. This is expected and not a discrepancy to "fix."
+- **Weeks 2-3 order far less than Week 1** because the large cold-start order is still arriving through the pipeline (Regional's 120 units land in Week 2; Overseas's 61 units are en route to land in Week 4), so less new ordering is needed to stay above the floor.
+- **Week 4's Overseas order drops to exactly zero — the headline finding.** During the tariff spike, Overseas's landed cost rises from $15 to $20, making it temporarily *more expensive than Domestic ($18)*. The model correctly shifts the entire order to Domestic and Regional that week rather than continuing to use the now-worse option. This is precisely the behavior the tariff-spike disruption was designed to test.
+- **On-hand inventory stays within [50, 400] the entire trace and backlog never exceeds zero** — the model remains feasible throughout using real (not forecasted) demand for scoring.
+
+### How to use this test case once the solver exists
+
+Run the solver across weeks 1-5 for Facility F1 with these exact inputs (starting inventory 100, the given historical/actual demand, the tariff-spike disruption active only in week 4) and assert: (a) the week-by-week order quantities match this table's structure, (b) Overseas drops to 0 specifically in week 4, and (c) on-hand/backlog trace matches within a small tolerance.

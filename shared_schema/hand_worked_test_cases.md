@@ -85,3 +85,54 @@ Because order quantities are now integer-constrained, classical LP dual values (
 ### How to use this test case once the solver exists
 
 Assert that, given this exact input state, the solver's per-period ordering model returns **integer** order quantities matching this exact structure (Domestic=68, Regional=120, Overseas=62), with total procurement cost within a small tolerance of $4,074.00.
+
+---
+
+## Test Case 2 — Facility F3, Period (Week) 1, With a Real Computed Forecast
+
+Unlike Test Case 1 (which assumed a flat forecast for simplicity), this case walks through actually computing the forecast from historical data, and uses a lower-demand facility to exercise a different binding constraint.
+
+### Step 1: Historical demand data (input)
+
+F3 serves customers C3 and C5:
+
+| Week | -7 | -6 | -5 | -4 | -3 | -2 | -1 | 0 |
+|---|---|---|---|---|---|---|---|---|
+| C3 | 25 | 23 | 28 | 21 | 21 | 24 | 29 | 26 |
+| C5 | 30 | 24 | 27 | 30 | 31 | 32 | 27 | 29 |
+| **F3 total** | 55 | 47 | 55 | 51 | 52 | 56 | 56 | 55 |
+
+### Step 2: Forecast computed (3-period moving average)
+
+Average of the last 3 known weeks (-2, -1, 0) = (56+56+55)/3 = 55.67 → **rounded to 56 units/week**, held flat across all future checkpoints.
+
+### Step 3: Checkpoint requirements
+
+Same starting inventory (100) and floor (50) as Test Case 1, forecast=56:
+
+| Checkpoint | Suppliers counted | Requirement |
+|---|---|---|
+| k=1 | Domestic only | Domestic ≥ 6 |
+| k=3 | Domestic + Regional (dominates k=2) | Dom+Reg ≥ 118 |
+| k=4 | All three | Total ≥ 174 |
+
+### Step 4: Verified integer-optimal order quantities
+
+Solved as an integer program (verified via `scipy.optimize.milp`):
+
+| Supplier | Order Quantity | Binding constraint |
+|---|---|---|
+| Domestic Fab | **44 units** | Residual (not itself binding) |
+| Regional Partner | **87 units** | Exactly 50% of total — its **diversification cap**, not its 120-unit capacity |
+| Overseas Manufacturer | **43 units** | 24.7% of total — just under its 25% diversification cap |
+| **Total** | **174 units** | Exactly meets the k=4 requirement |
+
+**Total procurement cost: $2,829.00**
+
+### Why this test case matters alongside Test Case 1
+
+Test Case 1 (higher-demand F1) had Regional Partner bound by its **absolute capacity** (120 units, hit its ceiling). This case (lower-demand F3) has Regional bound instead by its **percentage diversification cap** (50% of a smaller total, never approaching its 120-unit capacity). A correct solver implementation should reproduce this shift in which constraint binds as demand scale changes — if a future implementation always shows the same constraint binding regardless of facility scale, that's a signal to investigate a bug. Also notably, unlike Test Case 1, no "inflate the total order beyond the bare minimum" behavior was needed here to accommodate the diversification caps — everything fits naturally at the minimum feasible total.
+
+### How to use this test case once the solver exists
+
+Assert that, given F3's historical demand and this exact input state, the solver (a) computes the same 3-period moving average forecast (56/week), and (b) returns integer order quantities matching this structure (Domestic=44, Regional=87 at exactly 50% of total, Overseas=43), with total procurement cost within a small tolerance of $2,829.00.

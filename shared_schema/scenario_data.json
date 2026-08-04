@@ -7,7 +7,7 @@
   },
 
   "demand_generation_methodology": {
-    "description": "Both historical_demand_last_8_weeks and actual_demand_ground_truth_by_week are generated the same way: weekly_demand (the fixed baseline) multiplied by a noise factor drawn from a uniform distribution on [0.8, 1.2] (i.e. +/-20%), rounded to a whole unit. The demand-spike disruption (week 6, C5, x1.5) is layered multiplicatively on top of this noise for that specific customer-week only. Generated ONCE via a seeded random process, then frozen -- identical for every participant and every forecasting method, exactly like the disruption schedule. Actual demand is intentionally generated independently of any forecasting method's prediction: forecasting methods are scored on how well they predict this fixed, pre-existing ground truth from historical data alone, not the other way around. This preserves comparability across participants and keeps the solve-once-per-forecasting-method Oracle architecture valid, since every method faces the same underlying reality."
+    "description": "Both historical_demand_last_8_weeks and actual_demand_ground_truth_by_week are generated the same way: weekly_demand (the fixed baseline) multiplied by a noise factor drawn from a uniform distribution on [0.5, 1.5] (i.e. +/-50%, widened from an initial +/-20%), rounded to a whole unit. The demand-spike disruption (week 6, C5, x1.5) is layered multiplicatively on top of this noise for that specific customer-week only. Generated ONCE via a seeded random process, then frozen -- identical for every participant and every forecasting method, exactly like the disruption schedule. Actual demand is intentionally generated independently of any forecasting method's prediction: forecasting methods are scored on how well they predict this fixed, pre-existing ground truth from historical data alone, not the other way around. This preserves comparability across participants and keeps the solve-once-per-forecasting-method Oracle architecture valid, since every method faces the same underlying reality. Note: widening the noise band to +/-50% was found NOT to be sufficient on its own to produce backorders against an Oracle-quality (full 4-week-lookahead) decision-maker -- the checkpoint-based ordering discipline is structurally robust to demand noise regardless of magnitude, within reasonable bounds. Backorders were achieved instead by testing a naive, no-lookahead heuristic decision-maker against the same disruption (see hand_worked_test_cases.md, Test Case 6)."
   },
 
   "suppliers": [
@@ -63,33 +63,33 @@
   "customers": [
     {
       "id": "C1", "weekly_demand": 30,
-      "historical_demand_last_8_weeks": [27, 29, 32, 29, 32, 28, 30, 33],
-      "actual_demand_ground_truth_by_week": [31, 32, 34, 27, 32, 35, 35, 26, 32, 31]
+      "historical_demand_last_8_weeks": [20, 36, 34, 29, 21, 39, 39, 30],
+      "actual_demand_ground_truth_by_week": [32, 34, 40, 23, 35, 42, 42, 21, 35, 34]
     },
     {
       "id": "C2", "weekly_demand": 45,
-      "historical_demand_last_8_weeks": [41, 50, 45, 50, 52, 45, 40, 45],
-      "actual_demand_ground_truth_by_week": [45, 53, 46, 44, 53, 47, 41, 42, 45, 37]
+      "historical_demand_last_8_weeks": [45, 33, 23, 39, 49, 26, 58, 33],
+      "actual_demand_ground_truth_by_week": [45, 66, 46, 43, 65, 51, 36, 36, 45, 25]
     },
     {
       "id": "C3", "weekly_demand": 25,
-      "historical_demand_last_8_weeks": [25, 23, 28, 21, 21, 24, 29, 26],
-      "actual_demand_ground_truth_by_week": [26, 27, 24, 28, 29, 26, 27, 21, 21, 30]
+      "historical_demand_last_8_weeks": [18, 14, 37, 31, 34, 28, 13, 21],
+      "actual_demand_ground_truth_by_week": [28, 31, 23, 34, 36, 26, 30, 15, 14, 37]
     },
     {
       "id": "C4", "weekly_demand": 35,
-      "historical_demand_last_8_weeks": [34, 30, 31, 38, 38, 32, 40, 32],
-      "actual_demand_ground_truth_by_week": [32, 31, 41, 38, 30, 33, 31, 32, 28, 35]
+      "historical_demand_last_8_weeks": [35, 22, 51, 30, 23, 46, 22, 50],
+      "actual_demand_ground_truth_by_week": [27, 25, 49, 44, 22, 29, 26, 27, 18, 36]
     },
     {
       "id": "C5", "weekly_demand": 28,
-      "historical_demand_last_8_weeks": [30, 24, 27, 30, 31, 32, 27, 29],
-      "actual_demand_ground_truth_by_week": [26, 27, 24, 24, 23, 48, 31, 29, 24, 24]
+      "historical_demand_last_8_weeks": [27, 29, 24, 28, 19, 15, 38, 21],
+      "actual_demand_ground_truth_by_week": [23, 25, 19, 17, 15, 58, 35, 30, 17, 18]
     },
     {
       "id": "C6", "weekly_demand": 40,
-      "historical_demand_last_8_weeks": [40, 34, 46, 38, 41, 40, 43, 35],
-      "actual_demand_ground_truth_by_week": [34, 37, 33, 36, 35, 35, 42, 39, 40, 38]
+      "historical_demand_last_8_weeks": [51, 28, 59, 56, 50, 51, 43, 49],
+      "actual_demand_ground_truth_by_week": [25, 33, 22, 31, 28, 28, 46, 38, 39, 34]
     }
   ],
 

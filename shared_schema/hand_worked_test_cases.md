@@ -163,3 +163,52 @@ Unlike Test Cases 1 and 2 (single-period snapshots), this case walks the full ro
 ### How to use this test case once the solver exists
 
 Run the solver across weeks 1-5 for Facility F1 with these exact inputs (starting inventory 100, the given historical/actual demand, the tariff-spike disruption active only in week 4) and assert: (a) the week-by-week order quantities match this table's structure, (b) Overseas drops to 0 specifically in week 4, and (c) on-hand/backlog trace matches within a small tolerance.
+
+---
+
+## Test Case 6 — Oracle vs. Naive Heuristic: When Does Backlog Actually Occur?
+
+This test case answers a question raised during design discussion: does the Week 6 demand-spike disruption (Facility F3, C5 +50%) ever actually produce backorders? The answer depends entirely on *who* is deciding, not on the disruption's severity alone.
+
+### Finding 1: widening demand noise from ±20% to ±50% did not, by itself, produce backlog
+
+Against an Oracle-quality (full 4-week checkpoint lookahead) decision-maker, neither the original ±20% noise band nor a widened ±50% band was sufficient to cause backlog during the Week 6 spike. The checkpoint-based ordering discipline is structurally robust to demand noise magnitude, within reasonable bounds — this is a feature of the model, not a data-tuning problem to fix by cranking up noise further. **The demand data was still updated to ±50% (kept as the new standard) since it makes disruptions feel more consequential even without triggering backlog outright.**
+
+### Finding 2: a genuinely naive decision-maker (no forward lookahead, no safety-buffer concept) does backorder
+
+Two heuristic variants were tested against the identical demand and disruption data as the Oracle:
+
+- **Floor-aware myopic heuristic** (plans only 1 week ahead, but still targets the 50-unit floor): dipped *below* its own floor in Week 1, but never triggered true backlog through Week 6.
+- **No-floor naive heuristic** (reacts only to the forecast, no safety-buffer concept at all — `shortfall = max(0, forecast - on_hand)`): genuinely backordered, twice.
+
+### Full comparison: Oracle vs. no-floor naive heuristic (Facility F3, Weeks 1-6)
+
+**Oracle (full 4-week lookahead):**
+
+| Week | Ordered (Total) | On-Hand (end) | Backlog |
+|---|---|---|---|
+| 1 | 130 | 82 | 0 |
+| 2 | 63 | 108 | 0 |
+| 3 | 64 | 113 | 0 |
+| 4 | 42 | 137 | 0 |
+| 5 | 51 | 136 | 0 |
+| 6 (demand spike) | 43 | 105 | **0** |
+
+**No-floor naive heuristic:**
+
+| Week | Ordered (Total) | On-Hand (end) | Backlog |
+|---|---|---|---|
+| 1 | 0 | 49 | 0 |
+| 2 | 0 | 0 | **7** |
+| 3 | 72 | 1 | 0 |
+| 4 | 70 | 3 | 0 |
+| 5 | 68 | 3 | 0 |
+| 6 (demand spike) | 65 | 0 | **14** |
+
+### Why this matters for the project's central thesis
+
+The naive heuristic backorders **twice** — once in Week 2 from ordinary forecast error alone (no disruption needed), and again, *worse* (14 vs. 7 units), specifically during the real disruption. The Oracle never backorders once on the identical demand data. This is exactly the kind of comparison the human case study is designed to surface: the value of disciplined, forward-looking decision-making isn't just lower cost — it's the difference between never stocking out and stocking out twice, with the gap widening specifically under disruption. This is a strong candidate for a headline finding once real human playthrough data exists to compare against this same naive baseline.
+
+### How to use this test case once the solver and simulation exist
+
+Implement the no-floor naive heuristic as one of the automated "player" stand-ins (per the many-runs harness plan), run it against the Oracle on identical scenario data, and assert that the naive heuristic's backlog is non-zero at least at Week 6, while the Oracle's remains zero throughout.

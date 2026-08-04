@@ -311,9 +311,15 @@ if __name__ == "__main__":
     # No-lookahead safety checks
     hist_week1 = data.demand_history_available_for_forecast("C5", current_week=1)
     hist_week6 = data.demand_history_available_for_forecast("C5", current_week=6)
+    week6_spike_value = data.actual_demand("C5", 6)
     print(f"\nC5 history available when deciding week 1 ({len(hist_week1)} points): {hist_week1}")
     print(f"C5 history available when deciding week 6 ({len(hist_week6)} points): {hist_week6}")
-    assert 48 not in hist_week6, "LOOKAHEAD BUG: week 6's own demand-spike value leaked into its own forecast history!"
+    assert week6_spike_value not in hist_week6[-1:], (
+        "LOOKAHEAD BUG: week 6's own demand-spike value leaked into its own forecast history!"
+    )
+    assert len(hist_week6) == len(data.customer_by_id("C5").historical_demand_last_8_weeks) + 5, (
+        "History length is wrong -- should be 8 historical + weeks 1-5 revealed (5 weeks), not including week 6 itself."
+    )
     print("OK: week 6's forecast history does not contain week 6's own (not-yet-revealed) actual demand.")
 
     print(f"\nDisruptions visible going into week 3 (should be empty): {data.disruptions_revealed_through(3)}")

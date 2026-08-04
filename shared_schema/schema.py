@@ -110,6 +110,7 @@ class PerPeriodCostParameters:
     backorder_cost_per_unit_per_week: float
     min_inventory_floor_units: float
     max_inventory_ceiling_units: float
+    initial_on_hand_inventory_units: float
     note: str = ""
 
 

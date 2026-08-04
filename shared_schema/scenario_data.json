@@ -125,7 +125,8 @@
     "backorder_cost_per_unit_per_week": 8,
     "min_inventory_floor_units": 50,
     "max_inventory_ceiling_units": 400,
-    "note": "Holding/backorder rates are deliberately stylized/compressed for whole-number player readability within a 10-week horizon; they are not derived from a literal real-world annualized inventory carrying cost percentage."
+    "initial_on_hand_inventory_units": 100,
+    "note": "Holding/backorder rates are deliberately stylized/compressed for whole-number player readability within a 10-week horizon; they are not derived from a literal real-world annualized inventory carrying cost percentage. initial_on_hand_inventory_units applies identically to every opened facility at the start of week 1 (before any period-1 decision), same value across facilities like the floor/ceiling. This parameter was missing until hand-worked Test Case 1 revealed that a true zero-inventory cold start is mathematically infeasible: with zero starting stock, the Week-3 checkpoint requires 275 units from the two fastest suppliers combined (Domestic + Regional), but their combined capacity caps out at 270 -- infeasible regardless of cost. 100 units resolves this with comfortable feasibility margin across all three opened facilities (F1, F3, F4) without trivializing the ordering decision."
   },
 
   "disruption_schedule": [

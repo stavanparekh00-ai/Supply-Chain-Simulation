@@ -3,7 +3,7 @@
     "product": "Automotive-grade microcontrollers (MCUs)",
     "period_unit": "week",
     "horizon_periods": 10,
-    "notes": "Illustrative synthetic scenario data. Tariff baseline/spike figures are grounded in real 2025-2026 Section 301 semiconductor tariff policy (25% -> 50% doubling precedent, further escalation actions in motion); all other figures (costs, capacities, transport costs, facility fixed costs) are invented for modeling purposes and are not sourced from real supplier contracts."
+    "notes": "Illustrative synthetic scenario data. Tariff baseline/spike figures are grounded in real 2025-2026 Section 301 semiconductor tariff policy (25% -> 50% doubling precedent, further escalation actions in motion); all other figures (costs, capacities, transport costs, facility fixed costs) are invented for modeling purposes and are not sourced from real supplier contracts. Demand/capacity/inventory quantities were scaled x10 from the original design-phase values (to move from tens into hundreds/low-thousands) -- per-unit rates (supplier unit cost, tariff %, transport cost per unit, holding cost per unit, backorder cost per unit) were deliberately left UNCHANGED, so all previously-verified hand-worked test cases and the network design decision (F1, F3, F4 open) remain structurally identical, just at 10x dollar/unit magnitude."
   },
 
   "demand_generation_methodology": {
@@ -22,7 +22,7 @@
       "lead_time_weeks": 1,
       "reliability_pct": 98,
       "defect_rate_pct": 0.5,
-      "capacity_per_facility_per_week": 150
+      "capacity_per_facility_per_week": 1500
     },
     {
       "id": "regional_partner",
@@ -35,7 +35,7 @@
       "lead_time_weeks": 2,
       "reliability_pct": 92,
       "defect_rate_pct": 2.0,
-      "capacity_per_facility_per_week": 120
+      "capacity_per_facility_per_week": 1200
     },
     {
       "id": "overseas_manufacturer",
@@ -48,48 +48,48 @@
       "lead_time_weeks": 4,
       "reliability_pct": 85,
       "defect_rate_pct": 4.0,
-      "capacity_per_facility_per_week": 100
+      "capacity_per_facility_per_week": 1000
     }
   ],
 
   "candidate_facilities": [
-    {"id": "F1", "fixed_cost_to_open": 500},
-    {"id": "F2", "fixed_cost_to_open": 700},
-    {"id": "F3", "fixed_cost_to_open": 400},
-    {"id": "F4", "fixed_cost_to_open": 600},
-    {"id": "F5", "fixed_cost_to_open": 550}
+    {"id": "F1", "fixed_cost_to_open": 5000},
+    {"id": "F2", "fixed_cost_to_open": 7000},
+    {"id": "F3", "fixed_cost_to_open": 4000},
+    {"id": "F4", "fixed_cost_to_open": 6000},
+    {"id": "F5", "fixed_cost_to_open": 5500}
   ],
 
   "customers": [
     {
-      "id": "C1", "weekly_demand": 30,
-      "historical_demand_last_8_weeks": [20, 36, 34, 29, 21, 39, 39, 30],
-      "actual_demand_ground_truth_by_week": [32, 34, 40, 23, 35, 42, 42, 21, 35, 34]
+      "id": "C1", "weekly_demand": 300,
+      "historical_demand_last_8_weeks": [200, 360, 340, 290, 210, 390, 390, 300],
+      "actual_demand_ground_truth_by_week": [320, 340, 400, 230, 350, 420, 420, 210, 350, 340]
     },
     {
-      "id": "C2", "weekly_demand": 45,
-      "historical_demand_last_8_weeks": [45, 33, 23, 39, 49, 26, 58, 33],
-      "actual_demand_ground_truth_by_week": [45, 66, 46, 43, 65, 51, 36, 36, 45, 25]
+      "id": "C2", "weekly_demand": 450,
+      "historical_demand_last_8_weeks": [450, 330, 230, 390, 490, 260, 580, 330],
+      "actual_demand_ground_truth_by_week": [450, 660, 460, 430, 650, 510, 360, 360, 450, 250]
     },
     {
-      "id": "C3", "weekly_demand": 25,
-      "historical_demand_last_8_weeks": [18, 14, 37, 31, 34, 28, 13, 21],
-      "actual_demand_ground_truth_by_week": [28, 31, 23, 34, 36, 26, 30, 15, 14, 37]
+      "id": "C3", "weekly_demand": 250,
+      "historical_demand_last_8_weeks": [180, 140, 370, 310, 340, 280, 130, 210],
+      "actual_demand_ground_truth_by_week": [280, 310, 230, 340, 360, 260, 300, 150, 140, 370]
     },
     {
-      "id": "C4", "weekly_demand": 35,
-      "historical_demand_last_8_weeks": [35, 22, 51, 30, 23, 46, 22, 50],
-      "actual_demand_ground_truth_by_week": [27, 25, 49, 44, 22, 29, 26, 27, 18, 36]
+      "id": "C4", "weekly_demand": 350,
+      "historical_demand_last_8_weeks": [350, 220, 510, 300, 230, 460, 220, 500],
+      "actual_demand_ground_truth_by_week": [270, 250, 490, 440, 220, 290, 260, 270, 180, 360]
     },
     {
-      "id": "C5", "weekly_demand": 28,
-      "historical_demand_last_8_weeks": [27, 29, 24, 28, 19, 15, 38, 21],
-      "actual_demand_ground_truth_by_week": [23, 25, 19, 17, 15, 58, 35, 30, 17, 18]
+      "id": "C5", "weekly_demand": 280,
+      "historical_demand_last_8_weeks": [270, 290, 240, 280, 190, 150, 380, 210],
+      "actual_demand_ground_truth_by_week": [230, 250, 190, 170, 150, 580, 350, 300, 170, 180]
     },
     {
-      "id": "C6", "weekly_demand": 40,
-      "historical_demand_last_8_weeks": [51, 28, 59, 56, 50, 51, 43, 49],
-      "actual_demand_ground_truth_by_week": [25, 33, 22, 31, 28, 28, 46, 38, 39, 34]
+      "id": "C6", "weekly_demand": 400,
+      "historical_demand_last_8_weeks": [510, 280, 590, 560, 500, 510, 430, 490],
+      "actual_demand_ground_truth_by_week": [250, 330, 220, 310, 280, 280, 460, 380, 390, 340]
     }
   ],
 
@@ -110,22 +110,22 @@
       "C3": "F3", "C5": "F3",
       "C4": "F4", "C6": "F4"
     },
-    "total_cost": 2019,
-    "fixed_cost_component": 1500,
-    "transport_cost_component": 519,
+    "total_cost": 20190,
+    "fixed_cost_component": 15000,
+    "transport_cost_component": 5190,
     "runner_up": {
       "opened_facilities": ["F1", "F5"],
-      "total_cost": 2027,
-      "note": "Only $8 more expensive than the true optimum -- intentionally close, so a participant reasoning by intuition could plausibly (and defensibly) land here instead."
+      "total_cost": 20270,
+      "note": "Only $80 more expensive than the true optimum -- intentionally close, so a participant reasoning by intuition could plausibly (and defensibly) land here instead."
     }
   },
 
   "per_period_cost_parameters": {
     "holding_cost_per_unit_per_week": 2,
     "backorder_cost_per_unit_per_week": 8,
-    "min_inventory_floor_units": 50,
-    "max_inventory_ceiling_units": 400,
-    "initial_on_hand_inventory_units": 100,
+    "min_inventory_floor_units": 500,
+    "max_inventory_ceiling_units": 4000,
+    "initial_on_hand_inventory_units": 1000,
     "note": "Holding/backorder rates are deliberately stylized/compressed for whole-number player readability within a 10-week horizon; they are not derived from a literal real-world annualized inventory carrying cost percentage. initial_on_hand_inventory_units applies identically to every opened facility at the start of week 1 (before any period-1 decision), same value across facilities like the floor/ceiling. This parameter was missing until hand-worked Test Case 1 revealed that a true zero-inventory cold start is mathematically infeasible: with zero starting stock, the Week-3 checkpoint requires 275 units from the two fastest suppliers combined (Domestic + Regional), but their combined capacity caps out at 270 -- infeasible regardless of cost. 100 units resolves this with comfortable feasibility margin across all three opened facilities (F1, F3, F4) without trivializing the ordering decision."
   },
 

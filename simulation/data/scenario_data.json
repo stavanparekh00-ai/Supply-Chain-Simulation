@@ -1,0 +1,164 @@
+{
+  "scenario_metadata": {
+    "product": "Automotive-grade microcontrollers (MCUs)",
+    "period_unit": "week",
+    "horizon_periods": 10,
+    "notes": "Illustrative synthetic scenario data. Tariff baseline/spike figures are grounded in real 2025-2026 Section 301 semiconductor tariff policy (25% -> 50% doubling precedent, further escalation actions in motion); all other figures (costs, capacities, transport costs, facility fixed costs) are invented for modeling purposes and are not sourced from real supplier contracts. Demand/capacity/inventory quantities were scaled x10 from the original design-phase values (to move from tens into hundreds/low-thousands) -- per-unit rates (supplier unit cost, tariff %, transport cost per unit, holding cost per unit, backorder cost per unit) were deliberately left UNCHANGED, so all previously-verified hand-worked test cases and the network design decision (F1, F3, F4 open) remain structurally identical, just at 10x dollar/unit magnitude."
+  },
+
+  "demand_generation_methodology": {
+    "description": "Both historical_demand_last_8_weeks and actual_demand_ground_truth_by_week are generated the same way: weekly_demand (the fixed baseline) multiplied by a noise factor drawn from a uniform distribution on [0.5, 1.5] (i.e. +/-50%, widened from an initial +/-20%), rounded to a whole unit. The demand-spike disruption (week 6, C5, x1.5) is layered multiplicatively on top of this noise for that specific customer-week only. Generated ONCE via a seeded random process, then frozen -- identical for every participant and every forecasting method, exactly like the disruption schedule. Actual demand is intentionally generated independently of any forecasting method's prediction: forecasting methods are scored on how well they predict this fixed, pre-existing ground truth from historical data alone, not the other way around. This preserves comparability across participants and keeps the solve-once-per-forecasting-method Oracle architecture valid, since every method faces the same underlying reality. Note: widening the noise band to +/-50% was found NOT to be sufficient on its own to produce backorders against an Oracle-quality (full 4-week-lookahead) decision-maker -- the checkpoint-based ordering discipline is structurally robust to demand noise regardless of magnitude, within reasonable bounds. Backorders were achieved instead by testing a naive, no-lookahead heuristic decision-maker against the same disruption (see hand_worked_test_cases.md, Test Case 6)."
+  },
+
+  "suppliers": [
+    {
+      "id": "domestic_fab",
+      "name": "Domestic Fab",
+      "origin_country": "USA",
+      "tier": "High",
+      "diversification_cap_pct": 70,
+      "base_unit_cost": 18,
+      "baseline_tariff_pct": 0,
+      "lead_time_weeks": 1,
+      "reliability_pct": 98,
+      "defect_rate_pct": 0.5,
+      "capacity_per_facility_per_week": 1500
+    },
+    {
+      "id": "regional_partner",
+      "name": "Regional Partner",
+      "origin_country": "Mexico",
+      "tier": "Medium",
+      "diversification_cap_pct": 50,
+      "base_unit_cost": 16,
+      "baseline_tariff_pct": 0,
+      "lead_time_weeks": 2,
+      "reliability_pct": 92,
+      "defect_rate_pct": 2.0,
+      "capacity_per_facility_per_week": 1200
+    },
+    {
+      "id": "overseas_manufacturer",
+      "name": "Overseas Manufacturer",
+      "origin_country": "China",
+      "tier": "Low",
+      "diversification_cap_pct": 25,
+      "base_unit_cost": 10,
+      "baseline_tariff_pct": 50,
+      "lead_time_weeks": 4,
+      "reliability_pct": 85,
+      "defect_rate_pct": 4.0,
+      "capacity_per_facility_per_week": 1000
+    }
+  ],
+
+  "candidate_facilities": [
+    {"id": "F1", "fixed_cost_to_open": 5000},
+    {"id": "F2", "fixed_cost_to_open": 7000},
+    {"id": "F3", "fixed_cost_to_open": 4000},
+    {"id": "F4", "fixed_cost_to_open": 6000},
+    {"id": "F5", "fixed_cost_to_open": 5500}
+  ],
+
+  "customers": [
+    {
+      "id": "C1", "weekly_demand": 300,
+      "historical_demand_last_8_weeks": [200, 360, 340, 290, 210, 390, 390, 300],
+      "actual_demand_ground_truth_by_week": [320, 340, 400, 230, 350, 420, 420, 210, 350, 340]
+    },
+    {
+      "id": "C2", "weekly_demand": 450,
+      "historical_demand_last_8_weeks": [450, 330, 230, 390, 490, 260, 580, 330],
+      "actual_demand_ground_truth_by_week": [450, 660, 460, 430, 650, 510, 360, 360, 450, 250]
+    },
+    {
+      "id": "C3", "weekly_demand": 250,
+      "historical_demand_last_8_weeks": [180, 140, 370, 310, 340, 280, 130, 210],
+      "actual_demand_ground_truth_by_week": [280, 310, 230, 340, 360, 260, 300, 150, 140, 370]
+    },
+    {
+      "id": "C4", "weekly_demand": 350,
+      "historical_demand_last_8_weeks": [350, 220, 510, 300, 230, 460, 220, 500],
+      "actual_demand_ground_truth_by_week": [270, 250, 490, 440, 220, 290, 260, 270, 180, 360]
+    },
+    {
+      "id": "C5", "weekly_demand": 280,
+      "historical_demand_last_8_weeks": [270, 290, 240, 280, 190, 150, 380, 210],
+      "actual_demand_ground_truth_by_week": [230, 250, 190, 170, 150, 580, 350, 300, 170, 180]
+    },
+    {
+      "id": "C6", "weekly_demand": 400,
+      "historical_demand_last_8_weeks": [510, 280, 590, 560, 500, 510, 430, 490],
+      "actual_demand_ground_truth_by_week": [250, 330, 220, 310, 280, 280, 460, 380, 390, 340]
+    }
+  ],
+
+  "transport_cost_matrix": {
+    "F1": {"C1": 2,  "C2": 3,  "C3": 13, "C4": 14, "C5": 13, "C6": 14},
+    "F2": {"C1": 4,  "C2": 2,  "C3": 12, "C4": 13, "C5": 12, "C6": 13},
+    "F3": {"C1": 13, "C2": 12, "C3": 2,  "C4": 12, "C5": 3,  "C6": 13},
+    "F4": {"C1": 14, "C2": 13, "C3": 12, "C4": 2,  "C5": 12, "C6": 3},
+    "F5": {"C1": 12, "C2": 13, "C3": 12, "C4": 6,  "C5": 4,  "C6": 4}
+  },
+
+  "network_design_reference_solution": {
+    "description": "Brute-force-verified optimal answer for Stage 0 (Network Design), used as ground truth to validate the Oracle's network design output before trusting it.",
+    "opened_facilities": ["F1", "F3", "F4"],
+    "closed_facilities": ["F2", "F5"],
+    "customer_assignment": {
+      "C1": "F1", "C2": "F1",
+      "C3": "F3", "C5": "F3",
+      "C4": "F4", "C6": "F4"
+    },
+    "total_cost": 20190,
+    "fixed_cost_component": 15000,
+    "transport_cost_component": 5190,
+    "runner_up": {
+      "opened_facilities": ["F1", "F5"],
+      "total_cost": 20270,
+      "note": "Only $80 more expensive than the true optimum -- intentionally close, so a participant reasoning by intuition could plausibly (and defensibly) land here instead."
+    }
+  },
+
+  "per_period_cost_parameters": {
+    "holding_cost_per_unit_per_week": 2,
+    "backorder_cost_per_unit_per_week": 8,
+    "min_inventory_floor_units": 500,
+    "max_inventory_ceiling_units": 4000,
+    "initial_on_hand_inventory_units": 1000,
+    "note": "Holding/backorder rates are deliberately stylized/compressed for whole-number player readability within a 10-week horizon; they are not derived from a literal real-world annualized inventory carrying cost percentage. initial_on_hand_inventory_units applies identically to every opened facility at the start of week 1 (before any period-1 decision), same value across facilities like the floor/ceiling. This parameter was missing until hand-worked Test Case 1 revealed that a true zero-inventory cold start is mathematically infeasible: with zero starting stock, the Week-3 checkpoint requires 275 units from the two fastest suppliers combined (Domestic + Regional), but their combined capacity caps out at 270 -- infeasible regardless of cost. 100 units resolves this with comfortable feasibility margin across all three opened facilities (F1, F3, F4) without trivializing the ordering decision."
+  },
+
+  "disruption_schedule": [
+    {
+      "week": 4,
+      "type": "tariff_spike",
+      "target_supplier_id": "overseas_manufacturer",
+      "effect": {"tariff_pct_override": 100},
+      "description": "Overseas Manufacturer's tariff temporarily escalates from 50% to 100% for this week only, pushing landed cost from $15 to $20 per unit -- temporarily more expensive than Domestic Fab ($18)."
+    },
+    {
+      "week": 6,
+      "type": "demand_spike",
+      "target_customer_id": "C5",
+      "effect": {"demand_multiplier": 1.5},
+      "description": "C5's demand temporarily increases by 50% for this week only."
+    },
+    {
+      "week": 9,
+      "type": "supplier_capacity_cut",
+      "target_supplier_id": "overseas_manufacturer",
+      "effect": {"capacity_multiplier": 0.5},
+      "description": "Overseas Manufacturer's capacity at every facility is temporarily cut by 50% for this week only."
+    }
+  ],
+
+  "forecasting_methods_menu": [
+    {"id": "naive", "name": "Naive (Last Period)", "params": {}},
+    {"id": "ma_2", "name": "2-Period Moving Average", "params": {"window": 2}},
+    {"id": "ma_3", "name": "3-Period Moving Average", "params": {"window": 3}},
+    {"id": "ma_4", "name": "4-Period Moving Average", "params": {"window": 4}},
+    {"id": "weighted_ma", "name": "Weighted Moving Average", "params": {"weights": [3, 2, 1]}},
+    {"id": "exp_smoothing", "name": "Exponential Smoothing", "params": {"alpha": 0.3}}
+  ]
+}

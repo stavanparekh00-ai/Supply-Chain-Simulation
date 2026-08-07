@@ -25,6 +25,41 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const totalBackorderCost = periodStateRes.rows.reduce((s, r) => s + Number(r.backorder_cost), 0);
   const totalCost = totalProcurementCost + totalHoldingCost + totalBackorderCost;
   const totalBackorderedUnits = periodStateRes.rows.reduce((s, r) => s + Number(r.backlog), 0);
+  const communityRes = await pool.query(
+    `SELECT COUNT(*)::int AS completed_players, AVG(total_cost)::numeric AS average_cost
+     FROM (
+       SELECT s.id,
+              SUM(ps.procurement_cost + ps.holding_cost + ps.backorder_cost) AS total_cost
+       FROM sessions s
+       JOIN period_state ps ON ps.session_id = s.id
+       WHERE s.status = 'completed'
+       GROUP BY s.id
+     ) completed_runs`
+  );
+  const communityRow = communityRes.rows[0];
+
+  let playerCumulativeCost = 0;
+  const placeholderSolverCumulative = Array.from(
+    new Set(periodStateRes.rows.map((row) => Number(row.week)))
+  )
+    .sort((a, b) => a - b)
+    .map((week) => {
+      const weekCost = periodStateRes.rows
+        .filter((row) => Number(row.week) === week)
+        .reduce(
+          (sum, row) =>
+            sum +
+            Number(row.procurement_cost) +
+            Number(row.holding_cost) +
+            Number(row.backorder_cost),
+          0
+        );
+      playerCumulativeCost += weekCost;
+      return {
+        week,
+        cost: Math.round(playerCumulativeCost * 0.84),
+      };
+    });
 
   return NextResponse.json({
     session,
@@ -36,6 +71,43 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       totalBackorderCost,
       totalCost,
       totalBackorderedUnits,
+    },
+    community: {
+      completedPlayers: Number(communityRow.completed_players ?? 0),
+      averageCost:
+        communityRow.average_cost === null ? null : Number(communityRow.average_cost),
+    },
+    solverBenchmark: {
+      status: "illustrative_placeholder",
+      notice:
+        "Temporary illustrative benchmark only. These values are not solver output and will be replaced after the Oracle is implemented and validated.",
+      cumulativeCostByWeek: placeholderSolverCumulative,
+      sensitivityInsights: [
+        {
+          lever: "Domestic supplier capacity",
+          method: "LP-relaxation dual",
+          value: "$6.40 / additional unit",
+          impact: "More fast domestic capacity is estimated to reduce total cost by $6.40 per unit while this constraint is binding.",
+        },
+        {
+          lever: "Regional supplier capacity",
+          method: "LP-relaxation dual",
+          value: "$3.10 / additional unit",
+          impact: "Additional regional capacity has value, but less than domestic capacity because of its longer lead time.",
+        },
+        {
+          lever: "Maximum inventory ceiling",
+          method: "LP-relaxation dual",
+          value: "$0.00 / additional unit",
+          impact: "The storage ceiling is non-binding in this illustrative result; expanding it would not change the solution.",
+        },
+        {
+          lever: "Low-tier diversification cap",
+          method: "MILP re-optimization",
+          value: "$420 / percentage point",
+          impact: "Relaxing this risk cap lowers cost by allowing more volume from the cheapest overseas supplier, but increases concentration risk.",
+        },
+      ],
     },
   });
 }

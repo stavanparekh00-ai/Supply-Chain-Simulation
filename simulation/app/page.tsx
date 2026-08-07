@@ -6,12 +6,29 @@ import { PageShell, Card, PrimaryButton } from "@/components/ui";
 
 export default function WelcomePage() {
   const router = useRouter();
+  const [participantName, setParticipantName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleStart() {
+    const cleanedName = participantName.trim();
+    if (cleanedName.length < 2) {
+      setError("Please enter your name to continue.");
+      return;
+    }
     setLoading(true);
-    const res = await fetch("/api/sessions", { method: "POST" });
+    setError(null);
+    const res = await fetch("/api/sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ participantName: cleanedName }),
+    });
     const session = await res.json();
+    if (!res.ok) {
+      setError(session.error ?? "Could not start the simulation.");
+      setLoading(false);
+      return;
+    }
     router.push(`/session/${session.id}/network`);
   }
 
@@ -52,10 +69,34 @@ export default function WelcomePage() {
             ))}
           </div>
 
-          <div className="mt-8 flex justify-center">
-            <PrimaryButton onClick={handleStart} disabled={loading}>
-              {loading ? "Starting..." : "Get Started"}
-            </PrimaryButton>
+          <div className="mt-8 border-t border-[var(--card-border)] pt-6">
+            <label className="block">
+              <span className="text-xs font-semibold uppercase tracking-wider text-[var(--slate)]">
+                Participant name
+              </span>
+              <input
+                type="text"
+                value={participantName}
+                onChange={(event) => setParticipantName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void handleStart();
+                }}
+                maxLength={60}
+                autoComplete="name"
+                placeholder="Enter your name"
+                className="mt-2 w-full rounded-lg border border-[var(--card-border)] bg-white px-3.5 py-2.5 text-sm text-[var(--foreground)] shadow-sm transition-colors placeholder:text-[var(--slate-light)] focus:border-[var(--navy)]"
+              />
+              <span className="mt-1.5 block text-[11px] text-[var(--slate-light)]">
+                No password required. Your name is used only to identify this simulation run.
+              </span>
+            </label>
+            {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+
+            <div className="mt-5 flex justify-center">
+              <PrimaryButton onClick={handleStart} disabled={loading || participantName.trim().length < 2}>
+                {loading ? "Starting..." : "Enter Simulation"}
+              </PrimaryButton>
+            </div>
           </div>
         </Card>
       </div>

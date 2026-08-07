@@ -4,6 +4,7 @@
 CREATE TABLE IF NOT EXISTS sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  participant_name TEXT,
   status TEXT NOT NULL DEFAULT 'setup' CHECK (status IN ('setup', 'playing', 'completed')),
 
   -- Step 1: Facility Network Design choice
@@ -17,6 +18,9 @@ CREATE TABLE IF NOT EXISTS sessions (
   -- Progress tracking
   current_week INT NOT NULL DEFAULT 1
 );
+
+-- Safe migration for databases created before participant names were added.
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS participant_name TEXT;
 
 -- One row per facility per week per supplier order decision.
 CREATE TABLE IF NOT EXISTS decisions (

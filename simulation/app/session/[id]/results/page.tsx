@@ -14,7 +14,8 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { PageShell, PageHeader, Card, MetricCard, NeutralAlert } from "@/components/ui";
+import { PageShell, PageHeader, Card, MetricCard, NeutralAlert, Spinner } from "@/components/ui";
+import { AppHeader } from "@/components/AppHeader";
 
 interface PeriodStateRow {
   week: number;
@@ -56,9 +57,12 @@ export default function ResultsPage() {
 
   if (!data) {
     return (
-      <PageShell>
-        <p className="text-sm text-[var(--slate)]">Loading...</p>
-      </PageShell>
+      <>
+        <AppHeader activeStep="results" />
+        <PageShell>
+          <Spinner />
+        </PageShell>
+      </>
     );
   }
 
@@ -97,73 +101,79 @@ export default function ResultsPage() {
     overseas_manufacturer: "#d97706",
   };
 
+  const chartAxisStyle = { fontSize: 12, fill: "#64748b" };
+  const tooltipStyle = { borderRadius: 8, borderColor: "#e5e8ee", fontSize: 13 };
+
   return (
-    <PageShell>
-      <PageHeader title="Simulation Complete: Results Summary" />
+    <>
+      <AppHeader activeStep="results" />
+      <PageShell>
+        <PageHeader title="Simulation Complete" subtitle="Results Summary" />
 
-      <NeutralAlert>
-        Oracle comparison is not yet available &mdash; the optimization solver is being built
-        separately. This page currently shows your own results only.
-      </NeutralAlert>
+        <NeutralAlert>
+          Oracle comparison is not yet available &mdash; the optimization solver is being built
+          separately. This page currently shows your own results only.
+        </NeutralAlert>
 
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mt-6 mb-8">
-        <MetricCard label="Total Cost" value={`$${Math.round(data.totals.totalCost).toLocaleString()}`} />
-        <MetricCard label="Procurement Cost" value={`$${Math.round(data.totals.totalProcurementCost).toLocaleString()}`} />
-        <MetricCard label="Holding Cost" value={`$${Math.round(data.totals.totalHoldingCost).toLocaleString()}`} />
-        <MetricCard label="Backorder Cost" value={`$${Math.round(data.totals.totalBackorderCost).toLocaleString()}`} />
-      </div>
+        <div className="mt-6 mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <MetricCard label="Total Cost" value={`$${Math.round(data.totals.totalCost).toLocaleString()}`} accent />
+          <MetricCard label="Procurement Cost" value={`$${Math.round(data.totals.totalProcurementCost).toLocaleString()}`} />
+          <MetricCard label="Holding Cost" value={`$${Math.round(data.totals.totalHoldingCost).toLocaleString()}`} />
+          <MetricCard label="Backorder Cost" value={`$${Math.round(data.totals.totalBackorderCost).toLocaleString()}`} />
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-4">
-          <h2 className="text-sm font-semibold text-[var(--navy)] mb-3">Cost Per Period</h2>
-          <div style={{ width: "100%", height: 240 }}>
-            <ResponsiveContainer>
-              <LineChart data={costByWeek}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e5ea" />
-                <XAxis dataKey="week" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Line type="monotone" dataKey="cost" stroke="#1f3a5f" strokeWidth={2} dot={{ r: 3 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <Card className="p-5">
+            <h2 className="mb-4 text-sm font-semibold text-[var(--navy)]">Cost Per Period</h2>
+            <div style={{ width: "100%", height: 240 }}>
+              <ResponsiveContainer>
+                <LineChart data={costByWeek} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e8ee" vertical={false} />
+                  <XAxis dataKey="week" tick={chartAxisStyle} axisLine={{ stroke: "#e5e8ee" }} tickLine={false} />
+                  <YAxis tick={chartAxisStyle} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Line type="monotone" dataKey="cost" stroke="#1e3a5f" strokeWidth={2.5} dot={{ r: 3.5, fill: "#1e3a5f" }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
 
-        <Card className="p-4">
-          <h2 className="text-sm font-semibold text-[var(--navy)] mb-3">On-Hand Inventory &amp; Backlog</h2>
-          <div style={{ width: "100%", height: 240 }}>
-            <ResponsiveContainer>
-              <LineChart data={inventoryByWeek}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e5ea" />
-                <XAxis dataKey="week" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="onHand" name="On-Hand" stroke="#1f3a5f" strokeWidth={2} dot={{ r: 3 }} />
-                <Line type="monotone" dataKey="backlog" name="Backlog" stroke="#d97706" strokeWidth={2} dot={{ r: 3 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
+          <Card className="p-5">
+            <h2 className="mb-4 text-sm font-semibold text-[var(--navy)]">On-Hand Inventory &amp; Backlog</h2>
+            <div style={{ width: "100%", height: 240 }}>
+              <ResponsiveContainer>
+                <LineChart data={inventoryByWeek} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e8ee" vertical={false} />
+                  <XAxis dataKey="week" tick={chartAxisStyle} axisLine={{ stroke: "#e5e8ee" }} tickLine={false} />
+                  <YAxis tick={chartAxisStyle} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Line type="monotone" dataKey="onHand" name="On-Hand" stroke="#1e3a5f" strokeWidth={2.5} dot={{ r: 3.5 }} />
+                  <Line type="monotone" dataKey="backlog" name="Backlog" stroke="#b45309" strokeWidth={2.5} dot={{ r: 3.5 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
 
-        <Card className="p-4 lg:col-span-2">
-          <h2 className="text-sm font-semibold text-[var(--navy)] mb-3">Order Quantity by Supplier, Per Week</h2>
-          <div style={{ width: "100%", height: 260 }}>
-            <ResponsiveContainer>
-              <BarChart data={orderPatternByWeek}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e5ea" />
-                <XAxis dataKey="week" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Legend />
-                {supplierIds.map((s) => (
-                  <Bar key={s} dataKey={s} name={s} fill={supplierColors[s] ?? "#94a3b8"} />
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-      </div>
-    </PageShell>
+          <Card className="p-5 lg:col-span-2">
+            <h2 className="mb-4 text-sm font-semibold text-[var(--navy)]">Order Quantity by Supplier, Per Week</h2>
+            <div style={{ width: "100%", height: 260 }}>
+              <ResponsiveContainer>
+                <BarChart data={orderPatternByWeek} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e8ee" vertical={false} />
+                  <XAxis dataKey="week" tick={chartAxisStyle} axisLine={{ stroke: "#e5e8ee" }} tickLine={false} />
+                  <YAxis tick={chartAxisStyle} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  {supplierIds.map((s) => (
+                    <Bar key={s} dataKey={s} name={s} fill={supplierColors[s] ?? "#94a3b8"} radius={[3, 3, 0, 0]} />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </div>
+      </PageShell>
+    </>
   );
 }

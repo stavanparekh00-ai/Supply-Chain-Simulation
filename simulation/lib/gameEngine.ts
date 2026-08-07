@@ -20,6 +20,10 @@ export interface FacilityWeekInfo {
   suppliers: {
     id: string;
     name: string;
+    originCountry: string;
+    tier: string;
+    reliabilityPct: number;
+    defectRatePct: number;
     leadTimeWeeks: number;
     landedUnitCost: number;
     capacityThisWeek: number;
@@ -93,6 +97,10 @@ export async function buildFacilityWeekInfo(
     return {
       id: s.id,
       name: s.name,
+      originCountry: s.origin_country,
+      tier: s.tier,
+      reliabilityPct: s.reliability_pct,
+      defectRatePct: s.defect_rate_pct,
       leadTimeWeeks: s.lead_time_weeks,
       landedUnitCost: landedUnitCost(s, tariffOverride),
       capacityThisWeek: Math.floor(s.capacity_per_facility_per_week * capacityMultiplier),

@@ -53,41 +53,41 @@
   ],
 
   "candidate_facilities": [
-    {"id": "F1", "fixed_cost_to_open": 5000},
-    {"id": "F2", "fixed_cost_to_open": 7000},
-    {"id": "F3", "fixed_cost_to_open": 4000},
-    {"id": "F4", "fixed_cost_to_open": 6000},
-    {"id": "F5", "fixed_cost_to_open": 5500}
+    {"id": "F1", "name": "West Hub", "city": "Reno, NV", "map_x": 16, "map_y": 38, "fixed_cost_to_open": 5000},
+    {"id": "F2", "name": "Southwest Hub", "city": "Phoenix, AZ", "map_x": 27, "map_y": 67, "fixed_cost_to_open": 7000},
+    {"id": "F3", "name": "Central Hub", "city": "Denver, CO", "map_x": 42, "map_y": 45, "fixed_cost_to_open": 4000},
+    {"id": "F4", "name": "Southeast Hub", "city": "Atlanta, GA", "map_x": 73, "map_y": 68, "fixed_cost_to_open": 6000},
+    {"id": "F5", "name": "Midwest Hub", "city": "Chicago, IL", "map_x": 67, "map_y": 35, "fixed_cost_to_open": 5500}
   ],
 
   "customers": [
     {
-      "id": "C1", "weekly_demand": 300,
+      "id": "C1", "name": "Pacific Auto", "city": "Sacramento, CA", "map_x": 10, "map_y": 44, "weekly_demand": 300,
       "historical_demand_last_8_weeks": [200, 360, 340, 290, 210, 390, 390, 300],
       "actual_demand_ground_truth_by_week": [320, 340, 400, 230, 350, 420, 420, 210, 350, 340]
     },
     {
-      "id": "C2", "weekly_demand": 450,
+      "id": "C2", "name": "Southwest Mobility", "city": "Los Angeles, CA", "map_x": 12, "map_y": 70, "weekly_demand": 450,
       "historical_demand_last_8_weeks": [450, 330, 230, 390, 490, 260, 580, 330],
       "actual_demand_ground_truth_by_week": [450, 660, 460, 430, 650, 510, 360, 360, 450, 250]
     },
     {
-      "id": "C3", "weekly_demand": 250,
+      "id": "C3", "name": "Mountain Systems", "city": "Salt Lake City, UT", "map_x": 34, "map_y": 32, "weekly_demand": 250,
       "historical_demand_last_8_weeks": [180, 140, 370, 310, 340, 280, 130, 210],
       "actual_demand_ground_truth_by_week": [280, 310, 230, 340, 360, 260, 300, 150, 140, 370]
     },
     {
-      "id": "C4", "weekly_demand": 350,
+      "id": "C4", "name": "Gulf Automotive", "city": "Houston, TX", "map_x": 55, "map_y": 78, "weekly_demand": 350,
       "historical_demand_last_8_weeks": [350, 220, 510, 300, 230, 460, 220, 500],
       "actual_demand_ground_truth_by_week": [270, 250, 490, 440, 220, 290, 260, 270, 180, 360]
     },
     {
-      "id": "C5", "weekly_demand": 280,
+      "id": "C5", "name": "Great Lakes Motors", "city": "Detroit, MI", "map_x": 77, "map_y": 28, "weekly_demand": 280,
       "historical_demand_last_8_weeks": [270, 290, 240, 280, 190, 150, 380, 210],
       "actual_demand_ground_truth_by_week": [230, 250, 190, 170, 150, 580, 350, 300, 170, 180]
     },
     {
-      "id": "C6", "weekly_demand": 400,
+      "id": "C6", "name": "Atlantic Components", "city": "Charlotte, NC", "map_x": 81, "map_y": 61, "weekly_demand": 400,
       "historical_demand_last_8_weeks": [510, 280, 590, 560, 500, 510, 430, 490],
       "actual_demand_ground_truth_by_week": [250, 330, 220, 310, 280, 280, 460, 380, 390, 340]
     }

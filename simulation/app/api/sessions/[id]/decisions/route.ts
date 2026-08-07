@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
-import { loadScenarioData, facilityActualDemand } from "@/lib/scenarioData";
+import { loadScenarioData, facilityActualDemand, disruptionsInWeek } from "@/lib/scenarioData";
 import { getFacilityStateBeforeWeek, getPastDecisions, getSupplierLandedCostMap } from "@/lib/gameEngine";
 import { arrivingInWeek, runRecursion } from "@/lib/recursion";
 
@@ -44,8 +44,63 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const week: number = session.current_week;
     const openedFacilities: string[] = session.opened_facilities;
     const landedCostMap = getSupplierLandedCostMap(data, week);
+    const supplierById = new Map(data.suppliers.map((supplier) => [supplier.id, supplier]));
+    const capacityCut = disruptionsInWeek(data, week).find(
+      (disruption) => disruption.type === "supplier_capacity_cut"
+    );
     const leadTimeBySupplier: Record<string, number> = {};
     for (const s of data.suppliers) leadTimeBySupplier[s.id] = s.lead_time_weeks;
+
+    for (const facilityId of openedFacilities) {
+      const facilityOrders = orders.filter((order) => order.facilityId === facilityId);
+      const totalOrder = facilityOrders.reduce((sum, order) => sum + order.quantity, 0);
+      const seenSuppliers = new Set<string>();
+
+      for (const order of facilityOrders) {
+        const supplier = supplierById.get(order.supplierId);
+        if (!supplier) {
+          await client.query("ROLLBACK");
+          return NextResponse.json({ error: `Unknown supplier: ${order.supplierId}` }, { status: 400 });
+        }
+        if (seenSuppliers.has(order.supplierId)) {
+          await client.query("ROLLBACK");
+          return NextResponse.json(
+            { error: `Duplicate order for ${supplier.name} at facility ${facilityId}` },
+            { status: 400 }
+          );
+        }
+        seenSuppliers.add(order.supplierId);
+
+        const capacityMultiplier =
+          capacityCut?.target_supplier_id === supplier.id
+            ? Number(capacityCut.effect.capacity_multiplier)
+            : 1;
+        const availableCapacity = Math.floor(
+          supplier.capacity_per_facility_per_week * capacityMultiplier
+        );
+        if (order.quantity > availableCapacity) {
+          await client.query("ROLLBACK");
+          return NextResponse.json(
+            {
+              error: `${supplier.name} can supply at most ${availableCapacity.toLocaleString()} units to ${facilityId} this week.`,
+            },
+            { status: 400 }
+          );
+        }
+        if (
+          totalOrder > 0 &&
+          order.quantity / totalOrder > supplier.diversification_cap_pct / 100 + 1e-9
+        ) {
+          await client.query("ROLLBACK");
+          return NextResponse.json(
+            {
+              error: `${supplier.name} exceeds its ${supplier.diversification_cap_pct}% maximum share at ${facilityId}. Rebalance this facility's order.`,
+            },
+            { status: 400 }
+          );
+        }
+      }
+    }
 
     // Insert this week's decisions first (idempotent-ish: rely on UNIQUE constraint / prior validation).
     for (const o of orders) {
@@ -115,7 +170,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         ]
       );
 
-      results.push({ facilityId, ...recursionResult });
+      results.push({
+        facilityId,
+        actualDemand,
+        onHandStart: onHand,
+        backlogStart: backlog,
+        ...recursionResult,
+      });
     }
 
     const horizon = data.scenario_metadata.horizon_periods;

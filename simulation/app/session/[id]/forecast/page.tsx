@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from "recharts";
-import { PageShell, PageHeader, StepIndicator, Card, PrimaryButton } from "@/components/ui";
+import { PageShell, PageHeader, StepIndicator, Card, PrimaryButton, Spinner } from "@/components/ui";
+import { AppHeader } from "@/components/AppHeader";
 
 interface Customer {
   id: string;
@@ -46,9 +47,12 @@ export default function ForecastSetupPage() {
 
   if (!scenario) {
     return (
-      <PageShell>
-        <p className="text-sm text-[var(--slate)]">Loading...</p>
-      </PageShell>
+      <>
+        <AppHeader activeStep="forecast" />
+        <PageShell>
+          <Spinner />
+        </PageShell>
+      </>
     );
   }
 
@@ -58,58 +62,76 @@ export default function ForecastSetupPage() {
   const chartData = totalDemandByWeek.map((v, i) => ({ week: `-${8 - i}`, demand: v }));
 
   return (
-    <PageShell>
-      <StepIndicator current={2} total={2} label="Forecasting Method" />
-      <PageHeader
-        title="Choose Your Forecasting Method"
-        subtitle="This will be used to project demand each week. Once selected, it is locked for the rest of the simulation."
-      />
+    <>
+      <AppHeader activeStep="forecast" />
+      <PageShell>
+        <StepIndicator current={2} total={2} label="Forecasting Method" />
+        <PageHeader
+          title="Choose Your Forecasting Method"
+          subtitle="This will be used to project demand each week. Once selected, it is locked for the rest of the simulation."
+        />
 
-      <Card className="p-4 mb-6">
-        <h2 className="text-sm font-semibold text-[var(--navy)] mb-3">
-          Historical Demand (Last 8 Weeks, All Customers Combined)
-        </h2>
-        <div style={{ width: "100%", height: 220 }}>
-          <ResponsiveContainer>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e5ea" />
-              <XAxis dataKey="week" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Line type="monotone" dataKey="demand" stroke="#1f3a5f" strokeWidth={2} dot={{ r: 3 }} />
-            </LineChart>
-          </ResponsiveContainer>
+        <Card className="mb-6 p-5">
+          <h2 className="mb-4 text-sm font-semibold text-[var(--navy)]">
+            Historical Demand (Last 8 Weeks, All Customers Combined)
+          </h2>
+          <div style={{ width: "100%", height: 220 }}>
+            <ResponsiveContainer>
+              <LineChart data={chartData} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="demandFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#1e3a5f" stopOpacity={0.15} />
+                    <stop offset="100%" stopColor="#1e3a5f" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e8ee" vertical={false} />
+                <XAxis dataKey="week" tick={{ fontSize: 12, fill: "#64748b" }} axisLine={{ stroke: "#e5e8ee" }} tickLine={false} />
+                <YAxis tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ borderRadius: 8, borderColor: "#e5e8ee", fontSize: 13 }} />
+                <Line type="monotone" dataKey="demand" stroke="#1e3a5f" strokeWidth={2.5} dot={{ r: 3.5, fill: "#1e3a5f" }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        <Card className="p-5">
+          <h2 className="mb-4 text-sm font-semibold text-[var(--navy)]">Select a Method</h2>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {scenario.forecasting_methods_menu.map((m) => (
+              <button
+                key={m.id}
+                onClick={() => setSelectedMethod(m.id)}
+                className={`rounded-lg border px-4 py-3.5 text-left transition-all ${
+                  selectedMethod === m.id
+                    ? "border-[var(--navy)] bg-[var(--navy)]/[0.04] shadow-sm"
+                    : "border-[var(--card-border)] hover:border-[var(--slate-light)] hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-2 text-sm font-medium text-[var(--navy)]">
+                  <span
+                    className={`flex h-4 w-4 items-center justify-center rounded-full border text-[9px] ${
+                      selectedMethod === m.id ? "border-[var(--navy)] bg-[var(--navy)] text-white" : "border-[var(--slate-light)]"
+                    }`}
+                  >
+                    {selectedMethod === m.id ? "✓" : ""}
+                  </span>
+                  {m.name}
+                </div>
+                <div className="mt-1.5 pl-6 text-xs leading-relaxed text-[var(--slate)]">{m.description}</div>
+              </button>
+            ))}
+          </div>
+          <p className="mt-5 text-xs text-[var(--slate-light)]">
+            Note: this method cannot be changed once the simulation begins.
+          </p>
+        </Card>
+
+        <div className="mt-6 flex justify-end">
+          <PrimaryButton onClick={handleBegin} disabled={!selectedMethod || submitting}>
+            {submitting ? "Starting..." : "Begin Simulation"}
+          </PrimaryButton>
         </div>
-      </Card>
-
-      <Card className="p-4">
-        <h2 className="text-sm font-semibold text-[var(--navy)] mb-3">Select a Method</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {scenario.forecasting_methods_menu.map((m) => (
-            <button
-              key={m.id}
-              onClick={() => setSelectedMethod(m.id)}
-              className={`text-left rounded-md border px-4 py-3 transition-colors ${
-                selectedMethod === m.id
-                  ? "border-[var(--navy)] bg-blue-50"
-                  : "border-[var(--card-border)] hover:bg-gray-50"
-              }`}
-            >
-              <div className="text-sm font-medium text-[var(--navy)]">{m.name}</div>
-              <div className="mt-1 text-xs text-[var(--slate)]">{m.description}</div>
-            </button>
-          ))}
-        </div>
-        <p className="mt-4 text-xs text-[var(--slate)]">
-          Note: this method cannot be changed once the simulation begins.
-        </p>
-      </Card>
-
-      <div className="mt-6 flex justify-end">
-        <PrimaryButton onClick={handleBegin} disabled={!selectedMethod || submitting}>
-          {submitting ? "Starting..." : "Begin Simulation"}
-        </PrimaryButton>
-      </div>
-    </PageShell>
+      </PageShell>
+    </>
   );
 }

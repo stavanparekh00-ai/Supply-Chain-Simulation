@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { PageShell, PageHeader, Card, PrimaryButton } from "@/components/ui";
+import { PageShell, Card, PrimaryButton } from "@/components/ui";
 
 export default function WelcomePage() {
   const router = useRouter();
@@ -17,36 +17,48 @@ export default function WelcomePage() {
 
   return (
     <PageShell narrow>
-      <Card className="p-8">
-        <PageHeader title="Supply Chain Decision Simulation" />
-        <p className="text-sm leading-6 text-[var(--foreground)]">
-          You&apos;ll be making supply chain decisions for a manufacturer of automotive-grade
-          microcontrollers across a 10-week planning horizon. Demand each week is uncertain, and
-          a few supply disruptions will occur along the way. Your decisions will be compared to a
-          mathematically optimal benchmark (&quot;the Oracle&quot;) only after the simulation is
-          complete &mdash; nothing about the Oracle&apos;s behavior is shown while you&apos;re
-          deciding.
-        </p>
-        <ol className="mt-6 space-y-2 text-sm text-[var(--foreground)]">
-          <li className="flex gap-2">
-            <span className="font-semibold text-[var(--navy)]">1.</span> Design your facility
-            network &mdash; choose which candidate facilities to open.
-          </li>
-          <li className="flex gap-2">
-            <span className="font-semibold text-[var(--navy)]">2.</span> Choose a forecasting
-            method &mdash; locked in for the whole run once selected.
-          </li>
-          <li className="flex gap-2">
-            <span className="font-semibold text-[var(--navy)]">3.</span> Make ordering decisions
-            each week, for 10 weeks.
-          </li>
-        </ol>
-        <div className="mt-8">
-          <PrimaryButton onClick={handleStart} disabled={loading}>
-            {loading ? "Starting..." : "Get Started"}
-          </PrimaryButton>
+      <div className="flex min-h-[80vh] flex-col items-center justify-center">
+        <div className="mb-6 flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--navy)] text-sm font-bold text-white shadow-sm">
+          SC
         </div>
-      </Card>
+        <Card className="w-full p-8 sm:p-10">
+          <h1 className="text-center text-2xl font-semibold tracking-tight text-[var(--navy)]">
+            Supply Chain Decision Simulation
+          </h1>
+          <p className="mx-auto mt-4 max-w-lg text-center text-sm leading-relaxed text-[var(--slate)]">
+            You&apos;ll be making supply chain decisions for a manufacturer of automotive-grade
+            microcontrollers across a 10-week planning horizon. Demand each week is uncertain,
+            and a few supply disruptions will occur along the way. Your decisions will be
+            compared to a mathematically optimal benchmark (&quot;the Oracle&quot;) only after
+            the simulation is complete &mdash; nothing about the Oracle&apos;s behavior is shown
+            while you&apos;re deciding.
+          </p>
+
+          <div className="mt-8 space-y-3 border-t border-[var(--card-border)] pt-6">
+            {[
+              { n: 1, title: "Design your facility network", desc: "Choose which candidate facilities to open." },
+              { n: 2, title: "Choose a forecasting method", desc: "Locked in for the whole run once selected." },
+              { n: 3, title: "Make ordering decisions", desc: "Each week, for 10 weeks." },
+            ].map((step) => (
+              <div key={step.n} className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--navy)]/10 text-xs font-semibold text-[var(--navy)]">
+                  {step.n}
+                </span>
+                <div>
+                  <div className="text-sm font-medium text-[var(--foreground)]">{step.title}</div>
+                  <div className="text-xs text-[var(--slate)]">{step.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-8 flex justify-center">
+            <PrimaryButton onClick={handleStart} disabled={loading}>
+              {loading ? "Starting..." : "Get Started"}
+            </PrimaryButton>
+          </div>
+        </Card>
+      </div>
     </PageShell>
   );
 }

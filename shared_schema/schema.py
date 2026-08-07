@@ -58,12 +58,20 @@ class Supplier:
 @dataclass(frozen=True)
 class CandidateFacility:
     id: str
+    name: str
+    city: str
+    map_x: float
+    map_y: float
     fixed_cost_to_open: float
 
 
 @dataclass(frozen=True)
 class Customer:
     id: str
+    name: str
+    city: str
+    map_x: float
+    map_y: float
     weekly_demand: float
     historical_demand_last_8_weeks: List[float]
     actual_demand_ground_truth_by_week: List[float]

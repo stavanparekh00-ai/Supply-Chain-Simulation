@@ -22,6 +22,10 @@ export async function GET() {
     candidate_facilities: data.candidate_facilities,
     customers: data.customers.map((c) => ({
       id: c.id,
+      name: c.name,
+      city: c.city,
+      map_x: c.map_x,
+      map_y: c.map_y,
       weekly_demand: c.weekly_demand,
       historical_demand_last_8_weeks: c.historical_demand_last_8_weeks,
     })),

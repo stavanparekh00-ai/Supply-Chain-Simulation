@@ -28,11 +28,19 @@ export interface Supplier {
 
 export interface CandidateFacility {
   id: string;
+  name: string;
+  city: string;
+  map_x: number;
+  map_y: number;
   fixed_cost_to_open: number;
 }
 
 export interface Customer {
   id: string;
+  name: string;
+  city: string;
+  map_x: number;
+  map_y: number;
   weekly_demand: number;
   historical_demand_last_8_weeks: number[];
   actual_demand_ground_truth_by_week: number[];

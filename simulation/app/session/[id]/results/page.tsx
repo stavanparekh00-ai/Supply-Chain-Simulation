@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   LineChart,
   Line,
@@ -14,7 +14,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { PageShell, PageHeader, Card, MetricCard, NeutralAlert, Spinner } from "@/components/ui";
+import { PageShell, PageHeader, Card, MetricCard, NeutralAlert, Spinner, SecondaryButton } from "@/components/ui";
 import { AppHeader } from "@/components/AppHeader";
 
 interface PeriodStateRow {
@@ -62,6 +62,7 @@ interface ResultsResponse {
 
 export default function ResultsPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const [data, setData] = useState<ResultsResponse | null>(null);
 
   useEffect(() => {
@@ -269,6 +270,12 @@ export default function ResultsPage() {
               </table>
             </div>
           </Card>
+        </div>
+
+        <div className="mt-8 flex justify-center border-t border-[var(--card-border)] pt-6">
+          <SecondaryButton onClick={() => router.push("/")}>
+            Exit Simulation &amp; Return to Name Screen
+          </SecondaryButton>
         </div>
       </PageShell>
     </>

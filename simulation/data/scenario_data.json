@@ -54,40 +54,40 @@
       "id": "F1",
       "name": "West Hub",
       "city": "Reno, NV",
-      "map_x": 16,
-      "map_y": 38,
+      "map_x": 95,
+      "map_y": 235,
       "fixed_cost_to_open": 5000
     },
     {
       "id": "F2",
       "name": "Southwest Hub",
       "city": "Phoenix, AZ",
-      "map_x": 27,
-      "map_y": 67,
+      "map_x": 155,
+      "map_y": 355,
       "fixed_cost_to_open": 7000
     },
     {
       "id": "F3",
       "name": "Central Hub",
       "city": "Denver, CO",
-      "map_x": 42,
-      "map_y": 45,
+      "map_x": 300,
+      "map_y": 270,
       "fixed_cost_to_open": 4000
     },
     {
       "id": "F4",
       "name": "Southeast Hub",
       "city": "Atlanta, GA",
-      "map_x": 73,
-      "map_y": 68,
+      "map_x": 700,
+      "map_y": 355,
       "fixed_cost_to_open": 6000
     },
     {
       "id": "F5",
       "name": "Midwest Hub",
       "city": "Chicago, IL",
-      "map_x": 67,
-      "map_y": 35,
+      "map_x": 585,
+      "map_y": 220,
       "fixed_cost_to_open": 5500
     }
   ],
@@ -96,8 +96,8 @@
       "id": "C1",
       "name": "Pacific Auto",
       "city": "Sacramento, CA",
-      "map_x": 10,
-      "map_y": 44,
+      "map_x": 55,
+      "map_y": 255,
       "weekly_demand": 300,
       "historical_demand_last_8_weeks": [
         380,
@@ -126,8 +126,8 @@
       "id": "C2",
       "name": "Southwest Mobility",
       "city": "Los Angeles, CA",
-      "map_x": 12,
-      "map_y": 70,
+      "map_x": 75,
+      "map_y": 340,
       "weekly_demand": 450,
       "historical_demand_last_8_weeks": [
         683,
@@ -156,8 +156,8 @@
       "id": "C3",
       "name": "Mountain Systems",
       "city": "Salt Lake City, UT",
-      "map_x": 34,
-      "map_y": 32,
+      "map_x": 195,
+      "map_y": 245,
       "weekly_demand": 250,
       "historical_demand_last_8_weeks": [
         419,
@@ -186,8 +186,8 @@
       "id": "C4",
       "name": "Gulf Automotive",
       "city": "Houston, TX",
-      "map_x": 55,
-      "map_y": 78,
+      "map_x": 470,
+      "map_y": 405,
       "weekly_demand": 350,
       "historical_demand_last_8_weeks": [
         140,
@@ -216,8 +216,8 @@
       "id": "C5",
       "name": "Great Lakes Motors",
       "city": "Detroit, MI",
-      "map_x": 77,
-      "map_y": 28,
+      "map_x": 665,
+      "map_y": 195,
       "weekly_demand": 280,
       "historical_demand_last_8_weeks": [
         439,
@@ -246,8 +246,8 @@
       "id": "C6",
       "name": "Atlantic Components",
       "city": "Charlotte, NC",
-      "map_x": 81,
-      "map_y": 61,
+      "map_x": 755,
+      "map_y": 330,
       "weekly_demand": 400,
       "historical_demand_last_8_weeks": [
         306,

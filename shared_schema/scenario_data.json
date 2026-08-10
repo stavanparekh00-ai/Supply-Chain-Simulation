@@ -3,10 +3,10 @@
     "product": "Automotive-grade microcontrollers (MCUs)",
     "period_unit": "week",
     "horizon_periods": 10,
-    "notes": "Illustrative synthetic scenario. Overseas baseline landed cost is $12 (tariff applied only during the week-4 spike). Week 6 is a partial-fulfillment disruption (40% of arriving overseas orders delivered). Starting inventory is lean so shortfalls can create backlogs. Demand noise is +/-75%."
+    "notes": "Illustrative synthetic scenario. Overseas baseline landed cost is $12 (tariff applied only during the week-4 spike). Week 6 is a partial-fulfillment disruption (40% of arriving overseas orders delivered). Each facility starts with normal on-hand inventory and zero backlog; backlogs can still arise later from lead times, forecast error, or disruptions. Demand noise is +/-75%."
   },
   "demand_generation_methodology": {
-    "description": "Historical and actual demand use weekly_demand * U(0.25,1.75) (+/-75%), frozen with seed 20260811. No customer demand-spike disruption. Instead, week 6 applies a supplier partial-fulfillment shortfall (ordered quantity vs delivered quantity) to create inventory gaps and backlogs."
+    "description": "Historical and actual demand use weekly_demand * U(0.25,1.75) (+/-75%), frozen with seed 20260811. No customer demand-spike disruption. Instead, week 6 applies a supplier partial-fulfillment shortfall (ordered quantity vs delivered quantity) that can create inventory gaps and backlogs if players do not plan ahead."
   },
   "suppliers": [
     {
@@ -352,10 +352,10 @@
   "per_period_cost_parameters": {
     "holding_cost_per_unit_per_week": 2,
     "backorder_cost_per_unit_per_week": 8,
-    "min_inventory_floor_units": 200,
+    "min_inventory_floor_units": 400,
     "max_inventory_ceiling_units": 2500,
-    "initial_on_hand_inventory_units": 350,
-    "note": "Holding/backorder rates are stylized for whole-number readability. initial_on_hand_inventory_units is intentionally lean (350) so supplier shortfalls and lead-time gaps can produce visible backlogs. max_inventory_ceiling_units is a soft guide for players."
+    "initial_on_hand_inventory_units": 1600,
+    "note": "Holding/backorder rates are stylized for whole-number readability. Each open facility starts at 1600 on-hand with zero backlog (a normal opening position that can cover a typical week-1 load). Backlogs are earned later via under-ordering, lead-time gaps, or disruptions—not baked into the start. min/max inventory bounds are soft guides for players."
   },
   "disruption_schedule": [
     {

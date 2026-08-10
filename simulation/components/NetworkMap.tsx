@@ -20,36 +20,10 @@ interface MapCustomer {
   weekly_demand: number;
 }
 
-/** Decorative reference cities (not playable) so the map reads as a populated US. */
-const REFERENCE_CITIES: { name: string; x: number; y: number }[] = [
-  { name: "Seattle", x: 108, y: 78 },
-  { name: "Portland", x: 95, y: 118 },
-  { name: "San Francisco", x: 42, y: 278 },
-  { name: "San Diego", x: 95, y: 380 },
-  { name: "Las Vegas", x: 135, y: 305 },
-  { name: "Boise", x: 155, y: 175 },
-  { name: "Albuquerque", x: 245, y: 345 },
-  { name: "Minneapolis", x: 525, y: 145 },
-  { name: "Omaha", x: 455, y: 225 },
-  { name: "Kansas City", x: 485, y: 270 },
-  { name: "St. Louis", x: 555, y: 285 },
-  { name: "Dallas", x: 445, y: 375 },
-  { name: "New Orleans", x: 565, y: 435 },
-  { name: "Nashville", x: 640, y: 335 },
-  { name: "Milwaukee", x: 600, y: 195 },
-  { name: "Cleveland", x: 700, y: 205 },
-  { name: "Philadelphia", x: 825, y: 225 },
-  { name: "New York", x: 850, y: 195 },
-  { name: "Boston", x: 885, y: 155 },
-  { name: "Washington", x: 805, y: 255 },
-  { name: "Miami", x: 785, y: 495 },
-  { name: "Tampa", x: 745, y: 455 },
-];
-
-function arrowPoints(x1: number, y1: number, x2: number, y2: number, size = 11) {
+function arrowPoints(x1: number, y1: number, x2: number, y2: number, size = 12) {
   const angle = Math.atan2(y2 - y1, x2 - x1);
-  const tipX = x2 - Math.cos(angle) * 22;
-  const tipY = y2 - Math.sin(angle) * 22;
+  const tipX = x2 - Math.cos(angle) * 18;
+  const tipY = y2 - Math.sin(angle) * 18;
   const leftX = tipX - size * Math.cos(angle - Math.PI / 6);
   const leftY = tipY - size * Math.sin(angle - Math.PI / 6);
   const rightX = tipX - size * Math.cos(angle + Math.PI / 6);
@@ -58,82 +32,6 @@ function arrowPoints(x1: number, y1: number, x2: number, y2: number, size = 11) 
     lineEnd: { x: tipX, y: tipY },
     polygon: `${tipX},${tipY} ${leftX},${leftY} ${rightX},${rightY}`,
   };
-}
-
-function FacilityMarker({
-  facility,
-  selected,
-  onToggle,
-}: {
-  facility: MapFacility;
-  selected: boolean;
-  onToggle: () => void;
-}) {
-  const fill = selected ? "#1e3a5f" : "#ffffff";
-  const stroke = "#1e3a5f";
-  const detail = selected ? "#dbeafe" : "#1e3a5f";
-
-  return (
-    <g
-      transform={`translate(${facility.map_x} ${facility.map_y})`}
-      onClick={onToggle}
-      className="cursor-pointer"
-      role="button"
-      aria-label={`${selected ? "Close" : "Open"} facility ${facility.id}`}
-    >
-      {/* Warehouse / distribution hub icon */}
-      <g filter="url(#markerShadow)">
-        <rect x="-18" y="-14" width="36" height="28" rx="3" fill={fill} stroke={stroke} strokeWidth="2.5" />
-        <path
-          d="M -18 -8 L 0 -18 L 18 -8"
-          fill={fill}
-          stroke={stroke}
-          strokeWidth="2.5"
-          strokeLinejoin="round"
-        />
-        {/* Dock / bay doors */}
-        <rect x="-11" y="-2" width="8" height="12" rx="1" fill={detail} opacity={selected ? 0.9 : 0.2} />
-        <rect x="3" y="-2" width="8" height="12" rx="1" fill={detail} opacity={selected ? 0.9 : 0.2} />
-        {/* ID badge */}
-        <circle cx="14" cy="-14" r="9" fill={selected ? "#0f766e" : "#1e3a5f"} stroke="#fff" strokeWidth="2" />
-        <text x="14" y="-10" textAnchor="middle" fontSize="10" fontWeight="800" fill="#fff">
-          {facility.id}
-        </text>
-      </g>
-      <text x="0" y="28" textAnchor="middle" fontSize="12" fontWeight="700" fill="#1e3a5f">
-        {facility.name}
-      </text>
-      <text x="0" y="42" textAnchor="middle" fontSize="11" fill="#475569">
-        {facility.city}
-      </text>
-    </g>
-  );
-}
-
-function CustomerMarker({ customer }: { customer: MapCustomer }) {
-  return (
-    <g transform={`translate(${customer.map_x} ${customer.map_y})`}>
-      <g filter="url(#markerShadow)">
-        {/* Map pin */}
-        <path
-          d="M 0 -22 C -12 -22 -18 -14 -18 -6 C -18 4 0 22 0 22 C 0 22 18 4 18 -6 C 18 -14 12 -22 0 -22 Z"
-          fill="#c2410c"
-          stroke="#9a3412"
-          strokeWidth="1.5"
-        />
-        <circle cx="0" cy="-8" r="8" fill="#fff7ed" />
-        <text x="0" y="-4" textAnchor="middle" fontSize="9" fontWeight="800" fill="#9a3412">
-          {customer.id}
-        </text>
-      </g>
-      <text x="0" y="34" textAnchor="middle" fontSize="11" fontWeight="700" fill="#9a3412">
-        {customer.city.split(",")[0]}
-      </text>
-      <text x="0" y="46" textAnchor="middle" fontSize="10" fill="#7c2d12">
-        {customer.name}
-      </text>
-    </g>
-  );
 }
 
 export function NetworkMap({
@@ -170,24 +68,12 @@ export function NetworkMap({
         >
           <defs>
             <filter id="markerShadow" x="-50%" y="-50%" width="200%" height="200%">
-              <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" floodOpacity="0.28" />
+              <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" floodOpacity="0.25" />
             </filter>
           </defs>
 
           <rect width="959" height="593" fill="#9eb6d1" />
           <UsaMapOutline />
-
-          {/* Reference cities — geographic context only */}
-          <g aria-hidden="true">
-            {REFERENCE_CITIES.map((city) => (
-              <g key={city.name} transform={`translate(${city.x} ${city.y})`} opacity="0.55">
-                <circle r="2.2" fill="#475569" />
-                <text x="5" y="3.5" fontSize="10" fill="#475569" fontWeight="500">
-                  {city.name}
-                </text>
-              </g>
-            ))}
-          </g>
 
           {assignments.map(({ customer, facility }) => {
             if (!facility) return null;
@@ -200,9 +86,9 @@ export function NetworkMap({
                   x2={arrow.lineEnd.x}
                   y2={arrow.lineEnd.y}
                   stroke="#1e3a5f"
-                  strokeWidth="2.4"
+                  strokeWidth="2.5"
                   strokeDasharray="7 5"
-                  opacity="0.8"
+                  opacity="0.85"
                 />
                 <polygon points={arrow.polygon} fill="#1e3a5f" />
               </g>
@@ -210,46 +96,77 @@ export function NetworkMap({
           })}
 
           {customers.map((c) => (
-            <CustomerMarker key={c.id} customer={c} />
+            <g key={c.id} transform={`translate(${c.map_x} ${c.map_y})`}>
+              <circle r="11" fill="#fff7ed" stroke="#c2410c" strokeWidth="3" filter="url(#markerShadow)" />
+              <circle r="3.5" fill="#c2410c" />
+              <text x="14" y="-6" fontSize="14" fontWeight="700" fill="#9a3412">
+                {c.id}
+              </text>
+              <text x="14" y="10" fontSize="12" fill="#7c2d12">
+                {c.city.split(",")[0]}
+              </text>
+            </g>
           ))}
 
-          {facilities.map((f) => (
-            <FacilityMarker
-              key={f.id}
-              facility={f}
-              selected={selected.has(f.id)}
-              onToggle={() => onToggle(f.id)}
-            />
-          ))}
+          {facilities.map((f) => {
+            const isSelected = selected.has(f.id);
+            return (
+              <g
+                key={f.id}
+                transform={`translate(${f.map_x} ${f.map_y})`}
+                onClick={() => onToggle(f.id)}
+                className="cursor-pointer"
+                role="button"
+                aria-label={`${isSelected ? "Close" : "Open"} facility ${f.id}`}
+              >
+                <rect
+                  x="-14"
+                  y="-14"
+                  width="28"
+                  height="28"
+                  rx="5"
+                  fill={isSelected ? "#1e3a5f" : "#eff6ff"}
+                  stroke="#1e3a5f"
+                  strokeWidth="3"
+                  filter="url(#markerShadow)"
+                />
+                <text
+                  x="0"
+                  y="5"
+                  textAnchor="middle"
+                  fontSize="13"
+                  fontWeight="800"
+                  fill={isSelected ? "#fff" : "#1e3a5f"}
+                >
+                  {f.id}
+                </text>
+                <text x="18" y="-4" fontSize="13" fontWeight="700" fill="#1e3a5f">
+                  {f.name}
+                </text>
+                <text x="18" y="12" fontSize="11" fill="#475569">
+                  {f.city}
+                </text>
+              </g>
+            );
+          })}
         </svg>
 
         {selected.size === 0 && (
           <div className="pointer-events-none absolute inset-x-0 bottom-3 mx-auto w-max rounded border border-[var(--card-border)] bg-white/95 px-3 py-1.5 text-xs text-[var(--slate)] shadow-sm">
-            Select warehouse hubs — navy arrows show which customers each one serves
+            Select facilities — navy arrows show which customers each hub serves
           </div>
         )}
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-4 text-[11px] text-[var(--slate)]">
         <span className="flex items-center gap-1.5">
-          <span className="inline-flex h-4 w-5 items-center justify-center rounded-[2px] bg-[var(--navy)] text-[8px] font-bold text-white">
-            F
-          </span>
-          Open warehouse hub
+          <span className="h-3 w-3 rounded-sm bg-[var(--navy)]" /> Open facility
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-flex h-4 w-5 items-center justify-center rounded-[2px] border border-[var(--navy)] bg-white text-[8px] font-bold text-[var(--navy)]">
-            F
-          </span>
-          Candidate hub
+          <span className="h-3 w-3 rounded-sm border border-[var(--navy)] bg-[#eff6ff]" /> Candidate facility
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-3.5 w-2.5 rounded-t-full rounded-b-[1px] bg-[#c2410c]" />
-          Customer plant
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#475569] opacity-60" />
-          Reference city
+          <span className="h-2.5 w-2.5 rounded-full border-2 border-[#c2410c] bg-[#fff7ed]" /> Customer
         </span>
         <span className="flex items-center gap-1.5">
           <span className="inline-flex items-center gap-0.5 text-[var(--navy)]">

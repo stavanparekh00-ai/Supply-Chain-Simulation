@@ -95,9 +95,9 @@
     {
       "id": "C1",
       "name": "Pacific Auto",
-      "city": "Sacramento, CA",
-      "map_x": 55,
-      "map_y": 255,
+      "city": "Seattle, WA",
+      "map_x": 108,
+      "map_y": 78,
       "weekly_demand": 300,
       "historical_demand_last_8_weeks": [
         91,
@@ -155,9 +155,9 @@
     {
       "id": "C3",
       "name": "Mountain Systems",
-      "city": "Salt Lake City, UT",
-      "map_x": 195,
-      "map_y": 245,
+      "city": "Dallas, TX",
+      "map_x": 445,
+      "map_y": 375,
       "weekly_demand": 250,
       "historical_demand_last_8_weeks": [
         424,
@@ -185,9 +185,9 @@
     {
       "id": "C4",
       "name": "Gulf Automotive",
-      "city": "Houston, TX",
-      "map_x": 470,
-      "map_y": 405,
+      "city": "Miami, FL",
+      "map_x": 785,
+      "map_y": 495,
       "weekly_demand": 350,
       "historical_demand_last_8_weeks": [
         423,
@@ -245,9 +245,9 @@
     {
       "id": "C6",
       "name": "Atlantic Components",
-      "city": "Charlotte, NC",
-      "map_x": 755,
-      "map_y": 330,
+      "city": "New York, NY",
+      "map_x": 850,
+      "map_y": 195,
       "weekly_demand": 400,
       "historical_demand_last_8_weeks": [
         674,
@@ -330,8 +330,8 @@
       "C1": "F1",
       "C2": "F1",
       "C3": "F3",
-      "C5": "F3",
       "C4": "F4",
+      "C5": "F3",
       "C6": "F4"
     },
     "total_cost": 20190,
@@ -343,7 +343,7 @@
         "F5"
       ],
       "total_cost": 20270,
-      "note": "Only $80 more expensive than the true optimum -- intentionally close, so a participant reasoning by intuition could plausibly (and defensibly) land here instead."
+      "note": "Closest alternative under a max-3 open-facility rule."
     }
   },
   "per_period_cost_parameters": {

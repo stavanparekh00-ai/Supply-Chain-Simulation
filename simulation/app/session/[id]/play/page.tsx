@@ -305,30 +305,24 @@ export default function PlayPage() {
             const fillRate = result ? facilityFillRatePct(result) : null;
             const demandDelta = result ? result.actualDemand - f.forecast : null;
             const shortfall = result ? result.arrivingShortfall || result.arrivalShortfall || 0 : 0;
+            const outcomeWeek = feedback?.week ?? period.week;
 
             return (
               <Card key={f.facilityId} className="p-5">
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[var(--navy)] text-[11px] font-bold text-white">
-                      {f.facilityId}
-                    </span>
-                    <h2 className="text-sm font-semibold text-[var(--navy)]">Facility {f.facilityId}</h2>
-                    <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] text-[var(--slate)]">
-                      Max inventory {f.maxInventoryCeiling.toLocaleString()}
-                    </span>
-                    <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] text-[var(--slate)]">
-                      Floor {f.minInventoryFloor.toLocaleString()}
-                    </span>
-                  </div>
-                  {result && (
-                    <span className="rounded bg-[var(--navy)]/8 px-2.5 py-1 text-[11px] font-semibold text-[var(--navy)]">
-                      Week {feedback!.week} outcomes
-                    </span>
-                  )}
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[var(--navy)] text-[11px] font-bold text-white">
+                    {f.facilityId}
+                  </span>
+                  <h2 className="text-sm font-semibold text-[var(--navy)]">Facility {f.facilityId}</h2>
+                  <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] text-[var(--slate)]">
+                    Max inventory {f.maxInventoryCeiling.toLocaleString()}
+                  </span>
+                  <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] text-[var(--slate)]">
+                    Floor {f.minInventoryFloor.toLocaleString()}
+                  </span>
                 </div>
 
-                <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                   <MetricCard
                     label={result ? "Ending Inventory" : "On-Hand Inventory"}
                     value={(result ? result.onHandEnd : f.onHandStart).toLocaleString()}
@@ -346,30 +340,24 @@ export default function PlayPage() {
                       result && shortfall > 0 ? `Shortfall ${shortfall.toLocaleString()}` : undefined
                     }
                   />
-                  {result && (
-                    <>
-                      <MetricCard
-                        label={`Actual Demand · Week ${feedback!.week}`}
-                        value={result.actualDemand.toLocaleString()}
-                        sublabel={
-                          demandDelta === null
-                            ? undefined
-                            : `${demandDelta >= 0 ? "+" : ""}${demandDelta.toLocaleString()} vs forecast`
-                        }
-                        accent
-                      />
-                      <MetricCard
-                        label="Fill Rate"
-                        value={`${fillRate!.toFixed(1)}%`}
-                        sublabel={`Served ${result.newServed.toLocaleString()}`}
-                        accent={fillRate! < 100}
-                      />
-                      <MetricCard
-                        label="Period Cost"
-                        value={`$${Math.round(result.totalCost).toLocaleString()}`}
-                      />
-                    </>
-                  )}
+                  <MetricCard
+                    label={`Actual Demand · Week ${outcomeWeek}`}
+                    value={result ? result.actualDemand.toLocaleString() : "—"}
+                    sublabel={
+                      result && demandDelta !== null
+                        ? `${demandDelta >= 0 ? "+" : ""}${demandDelta.toLocaleString()} vs forecast`
+                        : "Revealed after submit"
+                    }
+                    accent={Boolean(result)}
+                  />
+                  <MetricCard
+                    label="Fill Rate"
+                    value={fillRate === null ? "—" : `${fillRate.toFixed(1)}%`}
+                    sublabel={
+                      result ? `Served ${result.newServed.toLocaleString()}` : "Revealed after submit"
+                    }
+                    accent={fillRate !== null && fillRate < 100}
+                  />
                 </div>
 
                 {f.customerForecasts.length > 0 && (

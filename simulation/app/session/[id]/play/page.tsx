@@ -86,7 +86,6 @@ interface PeriodFeedback {
 }
 
 type OrderDraft = Record<string, Record<string, number | "">>;
-type PlayTab = "orders" | "actual";
 
 const tooltipStyle = {
   borderRadius: 8,
@@ -109,7 +108,6 @@ export default function PlayPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<PeriodFeedback | null>(null);
-  const [activeTab, setActiveTab] = useState<PlayTab>("orders");
 
   const loadPeriod = useCallback(async () => {
     const res = await fetch(`/api/sessions/${params.id}/period`);
@@ -120,7 +118,6 @@ export default function PlayPage() {
     const data: PeriodInfo = await res.json();
     setPeriod(data);
     setFeedback(null);
-    setActiveTab("orders");
     const initial: OrderDraft = {};
     for (const f of data.facilities) {
       initial[f.facilityId] = {};
@@ -174,7 +171,6 @@ export default function PlayPage() {
     const result: PeriodFeedback = await res.json();
     setSubmitting(false);
     setFeedback(result);
-    setActiveTab("actual");
   }
 
   function handleContinue() {
@@ -235,8 +231,6 @@ export default function PlayPage() {
       ? period.charts.demandVsForecast
       : [{ week: period.week, forecast: period.charts.currentWeekForecast }];
 
-  const outcomeWeek = feedback?.week ?? period.week;
-
   return (
     <>
       <AppHeader
@@ -248,276 +242,176 @@ export default function PlayPage() {
       <PageShell>
         <PageHeader title="Place Your Orders" subtitle={`Period ${period.week} of ${period.horizonWeeks}`} />
 
-        <div className="mb-5 flex flex-wrap gap-2 border-b border-[var(--card-border)] pb-3">
-          <PlayTabButton
-            active={activeTab === "orders"}
-            label="Orders"
-            onClick={() => setActiveTab("orders")}
-          />
-          <PlayTabButton
-            active={activeTab === "actual"}
-            label={`Actual demand · Week ${outcomeWeek}`}
-            disabled={!feedback}
-            onClick={() => feedback && setActiveTab("actual")}
-          />
+        <div className="mb-6 grid gap-4 lg:grid-cols-2">
+          <ChartCard title="Cumulative cost" subtitle="Running total across completed weeks">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={costData} margin={{ top: 12, right: 12, left: 0, bottom: 4 }}>
+                <defs>
+                  <linearGradient id="costFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#1e3a5f" stopOpacity={0.28} />
+                    <stop offset="100%" stopColor="#1e3a5f" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#edf0f4" vertical={false} />
+                <XAxis dataKey="week" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} width={48} axisLine={false} tickLine={false} />
+                <Tooltip
+                  formatter={(value) => [`$${Number(value).toLocaleString()}`, "Cumulative cost"]}
+                  contentStyle={tooltipStyle}
+                />
+                <Area type="monotone" dataKey="cost" stroke="#1e3a5f" fill="url(#costFill)" strokeWidth={2.5} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </ChartCard>
+
+          <ChartCard title="Demand vs forecast" subtitle="Revealed after each submit">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={demandData} margin={{ top: 12, right: 12, left: 0, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#edf0f4" vertical={false} />
+                <XAxis dataKey="week" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} width={40} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: 11, paddingTop: 4 }} />
+                <Bar dataKey="demand" name="Actual" fill="#f2dcae" radius={[3, 3, 0, 0]} maxBarSize={28} />
+                <Line type="monotone" dataKey="forecast" name="Forecast" stroke="#1e3a5f" strokeWidth={2.5} dot={{ r: 3 }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </ChartCard>
         </div>
 
-        {activeTab === "orders" && (
-          <>
-            <div className="mb-6 grid gap-4 lg:grid-cols-2">
-              <ChartCard title="Cumulative cost" subtitle="Running total across completed weeks">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={costData} margin={{ top: 12, right: 12, left: 0, bottom: 4 }}>
-                    <defs>
-                      <linearGradient id="costFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#1e3a5f" stopOpacity={0.28} />
-                        <stop offset="100%" stopColor="#1e3a5f" stopOpacity={0.02} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#edf0f4" vertical={false} />
-                    <XAxis dataKey="week" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} width={48} axisLine={false} tickLine={false} />
-                    <Tooltip
-                      formatter={(value) => [`$${Number(value).toLocaleString()}`, "Cumulative cost"]}
-                      contentStyle={tooltipStyle}
-                    />
-                    <Area type="monotone" dataKey="cost" stroke="#1e3a5f" fill="url(#costFill)" strokeWidth={2.5} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </ChartCard>
+        <Card className="mb-6 grid grid-cols-2 overflow-hidden sm:grid-cols-3">
+          <Kpi label="Cumulative Cost" value={`$${period.performance.cumulativeCost.toLocaleString()}`} />
+          <Kpi label="Current Backlog" value={period.performance.currentBacklog.toLocaleString()} />
+          <Kpi label="Ending Inventory" value={period.performance.endingInventory.toLocaleString()} />
+        </Card>
 
-              <ChartCard title="Demand vs forecast" subtitle="Revealed after each submit">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={demandData} margin={{ top: 12, right: 12, left: 0, bottom: 4 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#edf0f4" vertical={false} />
-                    <XAxis dataKey="week" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} width={40} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Legend iconType="circle" wrapperStyle={{ fontSize: 11, paddingTop: 4 }} />
-                    <Bar dataKey="demand" name="Actual" fill="#f2dcae" radius={[3, 3, 0, 0]} maxBarSize={28} />
-                    <Line type="monotone" dataKey="forecast" name="Forecast" stroke="#1e3a5f" strokeWidth={2.5} dot={{ r: 3 }} />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </ChartCard>
-            </div>
+        {period.disruptionsThisWeek.length > 0 && (
+          <div className="mb-6 space-y-2">
+            {period.disruptionsThisWeek.map((d, i) => (
+              <NeutralAlert key={i}>{d.description}</NeutralAlert>
+            ))}
+          </div>
+        )}
 
-            <Card className="mb-6 grid grid-cols-2 overflow-hidden sm:grid-cols-3">
-              <Kpi label="Cumulative Cost" value={`$${period.performance.cumulativeCost.toLocaleString()}`} />
-              <Kpi label="Current Backlog" value={period.performance.currentBacklog.toLocaleString()} />
-              <Kpi label="Ending Inventory" value={period.performance.endingInventory.toLocaleString()} />
-            </Card>
+        {error && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">
+            {error}
+          </div>
+        )}
 
-            {period.disruptionsThisWeek.length > 0 && (
-              <div className="mb-6 space-y-2">
-                {period.disruptionsThisWeek.map((d, i) => (
-                  <NeutralAlert key={i}>{d.description}</NeutralAlert>
-                ))}
-              </div>
-            )}
+        <div className="space-y-6">
+          {period.facilities.map((f) => {
+            const result = feedback?.results.find((r) => r.facilityId === f.facilityId);
+            const fillRate = result ? facilityFillRatePct(result) : null;
+            const demandDelta = result ? result.actualDemand - f.forecast : null;
+            const shortfall = result ? result.arrivingShortfall || result.arrivalShortfall || 0 : 0;
 
-            {error && (
-              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">
-                {error}
-              </div>
-            )}
+            return (
+              <Card key={f.facilityId} className="p-5">
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[var(--navy)] text-[11px] font-bold text-white">
+                    {f.facilityId}
+                  </span>
+                  <h2 className="text-sm font-semibold text-[var(--navy)]">Facility {f.facilityId}</h2>
+                  <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] text-[var(--slate)]">
+                    Max inventory {f.maxInventoryCeiling.toLocaleString()}
+                  </span>
+                  <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] text-[var(--slate)]">
+                    Floor {f.minInventoryFloor.toLocaleString()}
+                  </span>
+                </div>
 
-            <div className="space-y-6">
-              {period.facilities.map((f) => (
-                <Card key={f.facilityId} className="p-5">
-                  <div className="mb-4 flex flex-wrap items-center gap-2">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[var(--navy)] text-[11px] font-bold text-white">
-                      {f.facilityId}
-                    </span>
-                    <h2 className="text-sm font-semibold text-[var(--navy)]">Facility {f.facilityId}</h2>
-                    <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] text-[var(--slate)]">
-                      Max inventory {f.maxInventoryCeiling.toLocaleString()}
-                    </span>
-                    <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] text-[var(--slate)]">
-                      Floor {f.minInventoryFloor.toLocaleString()}
-                    </span>
-                  </div>
-
-                  <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    <MetricCard label="On-Hand Inventory" value={f.onHandStart.toLocaleString()} />
-                    <MetricCard label="Backlog" value={f.backlogStart.toLocaleString()} accent={f.backlogStart > 0} />
-                    <MetricCard label="Facility Forecast" value={f.forecast.toLocaleString()} />
-                    <MetricCard label="Arriving This Week" value={f.arrivingThisWeek.toLocaleString()} />
-                  </div>
-
-                  {f.customerForecasts.length > 0 && (
-                    <div className="mb-4 flex flex-wrap gap-2">
-                      {f.customerForecasts.map((customer) => (
-                        <span
-                          key={customer.customerId}
-                          className="rounded border border-[var(--card-border)] bg-slate-50 px-2.5 py-1 text-[11px] text-[var(--slate)]"
-                        >
-                          <span className="font-semibold text-[var(--navy)]">{customer.customerId}</span>{" "}
-                          {customer.customerName}: {customer.forecast.toLocaleString()}
-                        </span>
-                      ))}
-                    </div>
+                <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                  {result ? (
+                    <>
+                      <MetricCard
+                        label="Actual Demand"
+                        value={result.actualDemand.toLocaleString()}
+                        sublabel={
+                          demandDelta === null
+                            ? undefined
+                            : `${demandDelta >= 0 ? "+" : ""}${demandDelta.toLocaleString()} vs forecast`
+                        }
+                        accent
+                      />
+                      <MetricCard
+                        label="Fill Rate"
+                        value={`${fillRate!.toFixed(1)}%`}
+                        sublabel={`Served ${result.newServed.toLocaleString()}`}
+                        accent={fillRate! < 100}
+                      />
+                      <MetricCard label="Ending Inventory" value={result.onHandEnd.toLocaleString()} />
+                      <MetricCard label="Backlog" value={result.backlogEnd.toLocaleString()} accent={result.backlogEnd > 0} />
+                      <MetricCard
+                        label="Arrived"
+                        value={result.arriving.toLocaleString()}
+                        sublabel={shortfall > 0 ? `Shortfall ${shortfall.toLocaleString()}` : undefined}
+                      />
+                      <MetricCard
+                        label="Period Cost"
+                        value={`$${Math.round(result.totalCost).toLocaleString()}`}
+                        sublabel={`Forecast ${f.forecast.toLocaleString()}`}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <MetricCard label="On-Hand Inventory" value={f.onHandStart.toLocaleString()} />
+                      <MetricCard label="Backlog" value={f.backlogStart.toLocaleString()} accent={f.backlogStart > 0} />
+                      <MetricCard label="Facility Forecast" value={f.forecast.toLocaleString()} />
+                      <MetricCard label="Arriving This Week" value={f.arrivingThisWeek.toLocaleString()} />
+                    </>
                   )}
+                </div>
 
-                  {!feedback && (
-                    <SupplierOrderPanel
-                      suppliers={f.suppliers}
-                      quantities={orders[f.facilityId] ?? {}}
-                      onChange={(supplierId, value) => setOrder(f.facilityId, supplierId, value)}
-                    />
-                  )}
-                  {feedback && (
-                    <p className="text-xs text-[var(--slate)]">
-                      Orders for this week are locked. Open the{" "}
-                      <button
-                        type="button"
-                        className="font-semibold text-[var(--navy)] underline-offset-2 hover:underline"
-                        onClick={() => setActiveTab("actual")}
+                {!result && f.customerForecasts.length > 0 && (
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    {f.customerForecasts.map((customer) => (
+                      <span
+                        key={customer.customerId}
+                        className="rounded border border-[var(--card-border)] bg-slate-50 px-2.5 py-1 text-[11px] text-[var(--slate)]"
                       >
-                        Actual demand · Week {feedback.week}
-                      </button>{" "}
-                      tab to review outcomes.
-                    </p>
-                  )}
-                </Card>
-              ))}
-            </div>
-
-            {!feedback && (
-              <div className="mt-6 flex flex-col items-end gap-3">
-                {hardIssues.length > 0 && (
-                  <div className="w-full rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">
-                    <div className="font-semibold">Fix capacity issues before submitting</div>
-                    <ul className="mt-1 list-disc pl-4">
-                      {hardIssues.map((issue) => (
-                        <li key={issue}>{issue}</li>
-                      ))}
-                    </ul>
+                        <span className="font-semibold text-[var(--navy)]">{customer.customerId}</span>{" "}
+                        {customer.customerName}: {customer.forecast.toLocaleString()}
+                      </span>
+                    ))}
                   </div>
                 )}
-                <PrimaryButton onClick={handleSubmit} disabled={submitting || hardIssues.length > 0}>
-                  {submitting ? "Submitting..." : "Submit Orders & Reveal Actual Demand"}
-                </PrimaryButton>
-              </div>
-            )}
-          </>
-        )}
 
-        {activeTab === "actual" && feedback && (
-          <ActualDemandTab
-            week={feedback.week}
-            facilities={period.facilities}
-            results={feedback.results}
-            completed={feedback.completed}
-            onContinue={handleContinue}
-          />
-        )}
+                {!feedback && (
+                  <SupplierOrderPanel
+                    suppliers={f.suppliers}
+                    quantities={orders[f.facilityId] ?? {}}
+                    onChange={(supplierId, value) => setOrder(f.facilityId, supplierId, value)}
+                  />
+                )}
+              </Card>
+            );
+          })}
+        </div>
+
+        <div className="mt-6 flex flex-col items-end gap-3">
+          {!feedback && hardIssues.length > 0 && (
+            <div className="w-full rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">
+              <div className="font-semibold">Fix capacity issues before submitting</div>
+              <ul className="mt-1 list-disc pl-4">
+                {hardIssues.map((issue) => (
+                  <li key={issue}>{issue}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {!feedback ? (
+            <PrimaryButton onClick={handleSubmit} disabled={submitting || hardIssues.length > 0}>
+              {submitting ? "Submitting..." : "Submit Orders & Reveal Actual Demand"}
+            </PrimaryButton>
+          ) : (
+            <PrimaryButton onClick={handleContinue}>
+              {feedback.completed ? "View Final Results" : "Continue to Next Period"}
+            </PrimaryButton>
+          )}
+        </div>
       </PageShell>
     </>
-  );
-}
-
-function ActualDemandTab({
-  week,
-  facilities,
-  results,
-  completed,
-  onContinue,
-}: {
-  week: number;
-  facilities: FacilityWeekInfo[];
-  results: FacilityFeedback[];
-  completed: boolean;
-  onContinue: () => void;
-}) {
-  return (
-    <div>
-      <PageHeader
-        title={`Actual demand · Week ${week}`}
-        subtitle="Realized demand versus your facility forecasts, with ending inventory and fill rate for each hub."
-      />
-
-      <div className="space-y-5">
-        {facilities.map((facility) => {
-          const result = results.find((row) => row.facilityId === facility.facilityId);
-          if (!result) return null;
-          const delta = result.actualDemand - facility.forecast;
-          const fillRate = facilityFillRatePct(result);
-          const shortfall = result.arrivingShortfall || result.arrivalShortfall || 0;
-
-          return (
-            <Card key={facility.facilityId} className="p-5">
-              <div className="mb-4 flex flex-wrap items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[var(--navy)] text-[11px] font-bold text-white">
-                  {facility.facilityId}
-                </span>
-                <h2 className="text-sm font-semibold text-[var(--navy)]">Facility {facility.facilityId}</h2>
-              </div>
-
-              <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
-                <MetricCard label="Actual Demand" value={result.actualDemand.toLocaleString()} accent />
-                <MetricCard
-                  label="vs Forecast"
-                  value={`${delta >= 0 ? "+" : ""}${delta.toLocaleString()}`}
-                  sublabel={`Forecast ${facility.forecast.toLocaleString()}`}
-                />
-                <MetricCard
-                  label="Fill Rate"
-                  value={`${fillRate.toFixed(1)}%`}
-                  sublabel={`Served ${result.newServed.toLocaleString()}`}
-                  accent={fillRate < 100}
-                />
-                <MetricCard label="Ending Inventory" value={result.onHandEnd.toLocaleString()} />
-                <MetricCard label="Backlog" value={result.backlogEnd.toLocaleString()} accent={result.backlogEnd > 0} />
-              </div>
-
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--slate)]">
-                <span>
-                  Arrived {result.arriving.toLocaleString()}
-                  {shortfall > 0 ? ` · delivery shortfall ${shortfall.toLocaleString()}` : ""}
-                </span>
-                <span>Period cost ${Math.round(result.totalCost).toLocaleString()}</span>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
-
-      <div className="mt-6 flex justify-end">
-        <PrimaryButton onClick={onContinue}>
-          {completed ? "View Final Results" : "Continue to Next Period"}
-        </PrimaryButton>
-      </div>
-    </div>
-  );
-}
-
-function PlayTabButton({
-  active,
-  label,
-  onClick,
-  disabled = false,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={[
-        "rounded-md border px-3.5 py-1.5 text-xs font-medium transition-colors",
-        active
-          ? "border-[var(--navy)] bg-[var(--navy)] text-white"
-          : disabled
-            ? "cursor-not-allowed border-[var(--card-border)] bg-slate-50 text-[var(--slate-light)]"
-            : "border-[var(--card-border)] bg-white text-[var(--slate)] hover:border-[var(--slate-light)]",
-      ].join(" ")}
-    >
-      {label}
-    </button>
   );
 }
 

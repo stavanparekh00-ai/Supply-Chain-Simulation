@@ -3,10 +3,10 @@
     "product": "Automotive-grade microcontrollers (MCUs)",
     "period_unit": "week",
     "horizon_periods": 10,
-    "notes": "Illustrative synthetic scenario data. Tariff baseline/spike figures are grounded in real 2025-2026 Section 301 semiconductor tariff policy; all other figures are invented for modeling purposes. Demand/capacity/inventory quantities are scaled into hundreds/low-thousands; per-unit rates are left unchanged. Demand noise is uniform +/-75%. Overseas Manufacturer lead time is 2 weeks. Player supplier allocation uses soft suggested shares (and a soft 50% single-supplier ceiling); hard diversification caps are reserved for the Oracle/MILP."
+    "notes": "Illustrative synthetic scenario. Overseas baseline landed cost is $12 (tariff applied only during the week-4 spike). Week 6 is a partial-fulfillment disruption (40% of arriving overseas orders delivered). Starting inventory is lean so shortfalls can create backlogs. Demand noise is +/-75%."
   },
   "demand_generation_methodology": {
-    "description": "Both historical_demand_last_8_weeks and actual_demand_ground_truth_by_week are generated the same way: weekly_demand (the fixed baseline) multiplied by a noise factor drawn from a uniform distribution on [0.25, 1.75] (i.e. +/-75%), rounded to a whole unit. The demand-spike disruption (week 6, C5, x1.5) is layered multiplicatively on top of this noise for that specific customer-week only. Generated ONCE via a seeded random process (seed 20260810), then frozen -- identical for every participant and every forecasting method. Actual demand is intentionally generated independently of any forecasting method."
+    "description": "Historical and actual demand use weekly_demand * U(0.25,1.75) (+/-75%), frozen with seed 20260811. No customer demand-spike disruption. Instead, week 6 applies a supplier partial-fulfillment shortfall (ordered quantity vs delivered quantity) to create inventory gaps and backlogs."
   },
   "suppliers": [
     {
@@ -19,7 +19,7 @@
       "lead_time_weeks": 1,
       "reliability_pct": 98,
       "defect_rate_pct": 0.5,
-      "capacity_per_facility_per_week": 1500,
+      "capacity_per_facility_per_week": 900,
       "suggested_share_pct": 70
     },
     {
@@ -32,7 +32,7 @@
       "lead_time_weeks": 2,
       "reliability_pct": 92,
       "defect_rate_pct": 2.0,
-      "capacity_per_facility_per_week": 1200,
+      "capacity_per_facility_per_week": 700,
       "suggested_share_pct": 50
     },
     {
@@ -41,11 +41,11 @@
       "origin_country": "China",
       "tier": "Low",
       "base_unit_cost": 12,
-      "baseline_tariff_pct": 50,
+      "baseline_tariff_pct": 0,
       "lead_time_weeks": 2,
       "reliability_pct": 85,
       "defect_rate_pct": 4.0,
-      "capacity_per_facility_per_week": 1000,
+      "capacity_per_facility_per_week": 800,
       "suggested_share_pct": 25
     }
   ],
@@ -100,26 +100,26 @@
       "map_y": 44,
       "weekly_demand": 300,
       "historical_demand_last_8_weeks": [
-        220,
-        97,
-        77,
-        99,
-        343,
-        511,
-        75,
-        124
+        91,
+        126,
+        145,
+        213,
+        199,
+        113,
+        231,
+        488
       ],
       "actual_demand_ground_truth_by_week": [
-        448,
-        431,
-        212,
-        313,
-        451,
-        297,
-        205,
-        493,
-        184,
-        204
+        217,
+        188,
+        412,
+        120,
+        272,
+        128,
+        469,
+        324,
+        86,
+        279
       ]
     },
     {
@@ -130,26 +130,26 @@
       "map_y": 70,
       "weekly_demand": 450,
       "historical_demand_last_8_weeks": [
-        474,
-        467,
-        635,
-        762,
-        267,
-        294,
-        638,
-        704
+        633,
+        557,
+        296,
+        286,
+        407,
+        304,
+        625,
+        170
       ],
       "actual_demand_ground_truth_by_week": [
-        343,
-        605,
-        778,
-        142,
-        199,
+        775,
         769,
-        387,
-        507,
-        174,
-        566
+        765,
+        551,
+        427,
+        635,
+        742,
+        684,
+        285,
+        171
       ]
     },
     {
@@ -160,26 +160,26 @@
       "map_y": 32,
       "weekly_demand": 250,
       "historical_demand_last_8_weeks": [
-        414,
-        174,
-        174,
-        240,
-        73,
-        224,
-        250,
-        323
+        424,
+        437,
+        344,
+        278,
+        203,
+        411,
+        108,
+        338
       ],
       "actual_demand_ground_truth_by_week": [
-        180,
-        153,
-        159,
-        131,
-        340,
-        212,
-        226,
-        136,
-        263,
-        101
+        264,
+        352,
+        81,
+        87,
+        337,
+        267,
+        250,
+        400,
+        357,
+        114
       ]
     },
     {
@@ -190,26 +190,26 @@
       "map_y": 78,
       "weekly_demand": 350,
       "historical_demand_last_8_weeks": [
-        435,
-        427,
-        251,
-        565,
-        523,
-        303,
-        476,
-        600
+        423,
+        121,
+        179,
+        239,
+        455,
+        180,
+        456,
+        200
       ],
       "actual_demand_ground_truth_by_week": [
-        216,
-        188,
-        509,
-        433,
-        562,
-        317,
-        308,
         268,
-        321,
-        175
+        438,
+        462,
+        510,
+        496,
+        563,
+        241,
+        572,
+        356,
+        146
       ]
     },
     {
@@ -220,26 +220,26 @@
       "map_y": 28,
       "weekly_demand": 280,
       "historical_demand_last_8_weeks": [
-        487,
-        130,
-        158,
-        259,
-        441,
-        251,
-        181,
-        196
+        252,
+        371,
+        90,
+        184,
+        99,
+        187,
+        195,
+        471
       ],
       "actual_demand_ground_truth_by_week": [
-        126,
-        485,
-        184,
-        258,
-        436,
-        394,
-        268,
-        259,
+        239,
+        301,
+        468,
+        344,
+        346,
         192,
-        489
+        215,
+        115,
+        184,
+        341
       ]
     },
     {
@@ -250,26 +250,26 @@
       "map_y": 61,
       "weekly_demand": 400,
       "historical_demand_last_8_weeks": [
-        557,
-        231,
-        140,
-        395,
-        231,
-        567,
-        102,
-        366
+        674,
+        239,
+        203,
+        644,
+        695,
+        337,
+        318,
+        619
       ],
       "actual_demand_ground_truth_by_week": [
-        471,
-        139,
-        496,
-        331,
-        233,
-        242,
-        492,
-        383,
-        592,
-        532
+        657,
+        631,
+        680,
+        421,
+        319,
+        226,
+        660,
+        660,
+        260,
+        352
       ]
     }
   ],
@@ -349,10 +349,10 @@
   "per_period_cost_parameters": {
     "holding_cost_per_unit_per_week": 2,
     "backorder_cost_per_unit_per_week": 8,
-    "min_inventory_floor_units": 500,
-    "max_inventory_ceiling_units": 4000,
-    "initial_on_hand_inventory_units": 1000,
-    "note": "Holding/backorder rates are deliberately stylized/compressed for whole-number player readability within a 10-week horizon; they are not derived from a literal real-world annualized inventory carrying cost percentage. initial_on_hand_inventory_units applies identically to every opened facility at the start of week 1 (before any period-1 decision), same value across facilities like the floor/ceiling. This parameter was missing until hand-worked Test Case 1 revealed that a true zero-inventory cold start is mathematically infeasible: with zero starting stock, the Week-3 checkpoint requires 275 units from the two fastest suppliers combined (Domestic + Regional), but their combined capacity caps out at 270 -- infeasible regardless of cost. 100 units resolves this with comfortable feasibility margin across all three opened facilities (F1, F3, F4) without trivializing the ordering decision."
+    "min_inventory_floor_units": 200,
+    "max_inventory_ceiling_units": 2500,
+    "initial_on_hand_inventory_units": 350,
+    "note": "Holding/backorder rates are stylized for whole-number readability. initial_on_hand_inventory_units is intentionally lean (350) so supplier shortfalls and lead-time gaps can produce visible backlogs. max_inventory_ceiling_units is a soft guide for players."
   },
   "disruption_schedule": [
     {
@@ -360,18 +360,18 @@
       "type": "tariff_spike",
       "target_supplier_id": "overseas_manufacturer",
       "effect": {
-        "tariff_pct_override": 200
+        "tariff_pct_override": 100
       },
-      "description": "Overseas Manufacturer's tariff temporarily escalates from 50% to 200% for this week only, pushing landed cost from $18 to $36 per unit."
+      "description": "Overseas Manufacturer's tariff jumps to 100% this week, raising landed cost from $12 to $24 per unit."
     },
     {
       "week": 6,
-      "type": "demand_spike",
-      "target_customer_id": "C5",
+      "type": "supplier_partial_fill",
+      "target_supplier_id": "overseas_manufacturer",
       "effect": {
-        "demand_multiplier": 1.5
+        "fill_rate": 0.4
       },
-      "description": "C5's demand temporarily increases by 50% for this week only."
+      "description": "Overseas Manufacturer can deliver only 40% of orders arriving this week (partial fulfillment shortfall). The undelivered balance does not arrive."
     },
     {
       "week": 9,
@@ -380,7 +380,7 @@
       "effect": {
         "capacity_multiplier": 0.5
       },
-      "description": "Overseas Manufacturer's capacity at every facility is temporarily cut by 50% for this week only."
+      "description": "Overseas Manufacturer's order capacity at every facility is cut by 50% for this week only."
     }
   ],
   "forecasting_methods_menu": [

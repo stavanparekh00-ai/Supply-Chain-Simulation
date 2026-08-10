@@ -48,7 +48,7 @@ export interface Customer {
 
 export interface DisruptionEvent {
   week: number;
-  type: "tariff_spike" | "demand_spike" | "supplier_capacity_cut";
+  type: "tariff_spike" | "demand_spike" | "supplier_capacity_cut" | "supplier_partial_fill";
   description: string;
   target_supplier_id?: string;
   target_customer_id?: string;

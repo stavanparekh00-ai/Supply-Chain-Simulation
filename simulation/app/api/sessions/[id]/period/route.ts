@@ -36,21 +36,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
      ORDER BY week ASC, facility_id ASC`,
     [id]
   );
-  const decisionsRes = await pool.query(
-    `SELECT week, facility_id, SUM(order_quantity)::int AS order_qty
-     FROM decisions
-     WHERE session_id = $1
-     GROUP BY week, facility_id
-     ORDER BY week ASC, facility_id ASC`,
-    [id]
-  );
 
   const previousBacklog = new Map<string, number>();
   let totalDemand = 0;
   let totalFulfilled = 0;
   let cumulativeCost = 0;
   const costByWeek = new Map<number, number>();
-  const backlogByWeek = new Map<number, number>();
   const demandByWeek = new Map<number, number>();
   const forecastByWeek = new Map<number, number>();
 
@@ -69,12 +60,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     totalFulfilled += fulfilled;
     cumulativeCost += rowCost;
     costByWeek.set(periodWeek, (costByWeek.get(periodWeek) ?? 0) + rowCost);
-    backlogByWeek.set(periodWeek, (backlogByWeek.get(periodWeek) ?? 0) + Number(row.backlog));
     demandByWeek.set(periodWeek, (demandByWeek.get(periodWeek) ?? 0) + Number(row.actual_demand));
     previousBacklog.set(facilityId, Number(row.backlog));
   }
 
-  // Reconstruct the facility-level forecast that was available at decision time for each past week.
   for (const periodWeek of demandByWeek.keys()) {
     let forecastSum = 0;
     for (const facilityId of openedFacilities) {
@@ -89,30 +78,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return { week: periodWeek, cost: Math.round(runningCost) };
   });
 
-  const backlogSeries = Array.from(backlogByWeek.entries()).map(([periodWeek, backlog]) => ({
-    week: periodWeek,
-    backlog,
-  }));
-
   const demandVsForecast = Array.from(demandByWeek.entries()).map(([periodWeek, demand]) => ({
     week: periodWeek,
     demand,
     forecast: forecastByWeek.get(periodWeek) ?? 0,
   }));
 
-  const ordersByFacility: Record<string, number>[] = [];
-  const orderWeeks = new Set(decisionsRes.rows.map((r) => Number(r.week)));
-  for (const periodWeek of Array.from(orderWeeks).sort((a, b) => a - b)) {
-    const point: Record<string, number> = { week: periodWeek };
-    for (const facilityId of openedFacilities) point[facilityId] = 0;
-    for (const row of decisionsRes.rows.filter((r) => Number(r.week) === periodWeek)) {
-      point[String(row.facility_id)] = Number(row.order_qty);
-    }
-    ordersByFacility.push(point);
-  }
-
   const latestStates = stateRes.rows.filter((r) => Number(r.week) === week - 1);
-
   const currentWeekForecast = facilities.reduce((sum, f) => sum + f.forecast, 0);
 
   return NextResponse.json({
@@ -124,10 +96,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     facilities,
     charts: {
       cumulativeCostByWeek,
-      backlogByWeek: backlogSeries,
       demandVsForecast,
-      ordersByFacility,
-      openedFacilities,
       currentWeekForecast,
     },
     performance: {

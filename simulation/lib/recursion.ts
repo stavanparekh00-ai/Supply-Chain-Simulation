@@ -13,6 +13,8 @@ export interface OrderDecision {
 
 export interface RecursionResult {
   arriving: number;
+  arrivingOrdered: number;
+  arrivingShortfall: number;
   available: number;
   backlogServed: number;
   remain: number;
@@ -29,28 +31,54 @@ export interface RecursionResult {
  * How much arrives in `targetWeek` from all past orders, given each
  * supplier's lead time. An order placed in week `w` with lead time `L`
  * arrives at the start of week `w + L - 1`.
+ *
+ * Optional fillRateBySupplier applies a partial-fulfillment disruption:
+ * only that fraction of the ordered quantity actually arrives.
  */
 export function arrivingInWeek(
   pastDecisions: OrderDecision[],
   targetWeek: number,
-  leadTimeBySupplier: Record<string, number>
-): number {
-  return pastDecisions
-    .filter((d) => d.week + leadTimeBySupplier[d.supplierId] - 1 === targetWeek)
-    .reduce((sum, d) => sum + d.quantity, 0);
+  leadTimeBySupplier: Record<string, number>,
+  fillRateBySupplier: Record<string, number> = {}
+): { arriving: number; ordered: number; shortfall: number; bySupplier: Record<string, { ordered: number; delivered: number }> } {
+  const bySupplier: Record<string, { ordered: number; delivered: number }> = {};
+  let ordered = 0;
+  let arriving = 0;
+
+  for (const d of pastDecisions) {
+    if (d.week + leadTimeBySupplier[d.supplierId] - 1 !== targetWeek) continue;
+    const rate = fillRateBySupplier[d.supplierId] ?? 1;
+    const delivered = Math.floor(d.quantity * rate);
+    ordered += d.quantity;
+    arriving += delivered;
+    if (!bySupplier[d.supplierId]) bySupplier[d.supplierId] = { ordered: 0, delivered: 0 };
+    bySupplier[d.supplierId].ordered += d.quantity;
+    bySupplier[d.supplierId].delivered += delivered;
+  }
+
+  return { arriving, ordered, shortfall: ordered - arriving, bySupplier };
 }
 
 export function runRecursion(params: {
   onHandStart: number;
   backlogStart: number;
   arriving: number;
+  arrivingOrdered?: number;
   actualDemand: number;
   thisWeeksOrders: { supplierId: string; quantity: number; landedUnitCost: number }[];
   holdingCostPerUnit: number;
   backorderCostPerUnit: number;
 }): RecursionResult {
-  const { onHandStart, backlogStart, arriving, actualDemand, thisWeeksOrders, holdingCostPerUnit, backorderCostPerUnit } =
-    params;
+  const {
+    onHandStart,
+    backlogStart,
+    arriving,
+    arrivingOrdered = arriving,
+    actualDemand,
+    thisWeeksOrders,
+    holdingCostPerUnit,
+    backorderCostPerUnit,
+  } = params;
 
   const available = onHandStart + arriving;
   const backlogServed = Math.min(available, backlogStart);
@@ -65,6 +93,8 @@ export function runRecursion(params: {
 
   return {
     arriving,
+    arrivingOrdered,
+    arrivingShortfall: arrivingOrdered - arriving,
     available,
     backlogServed,
     remain,

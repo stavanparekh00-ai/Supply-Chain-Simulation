@@ -129,7 +129,7 @@ class PerPeriodCostParameters:
 @dataclass(frozen=True)
 class DisruptionEvent:
     week: int
-    type: str  # "tariff_spike" | "demand_spike" | "supplier_capacity_cut"
+    type: str  # "tariff_spike" | "demand_spike" | "supplier_capacity_cut" | "supplier_partial_fill"
     description: str
     target_supplier_id: Optional[str] = None
     target_customer_id: Optional[str] = None
@@ -312,9 +312,9 @@ if __name__ == "__main__":
     print(f"Disruptions: {[(d.week, d.type) for d in data.disruption_schedule]}")
     overseas = data.supplier_by_id("overseas_manufacturer")
     print(f"Overseas landed cost normally: ${overseas.landed_unit_cost()}, "
-          f"during tariff spike: ${overseas.landed_unit_cost(tariff_pct_override=200)}")
-    print(f"C5 actual demand, week 6 (demand spike week): {data.actual_demand('C5', 6)}")
-    print(f"C5 actual demand, week 5 (normal week): {data.actual_demand('C5', 5)}")
+          f"during tariff spike: ${overseas.landed_unit_cost(tariff_pct_override=100)}")
+    print(f"C5 actual demand, week 6: {data.actual_demand('C5', 6)}")
+    print(f"C5 actual demand, week 5: {data.actual_demand('C5', 5)}")
 
     # No-lookahead safety checks
     hist_week1 = data.demand_history_available_for_forecast("C5", current_week=1)

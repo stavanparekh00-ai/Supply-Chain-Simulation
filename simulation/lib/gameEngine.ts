@@ -36,6 +36,7 @@ export interface FacilityWeekInfo {
     leadTimeWeeks: number;
     landedUnitCost: number;
     capacityThisWeek: number;
+    suggestedSharePct: number;
   }[];
 }
 
@@ -119,11 +120,18 @@ export async function buildFacilityWeekInfo(
   const pastDecisions = await getPastDecisions(pool, sessionId, facilityId);
   const leadTimeBySupplier: Record<string, number> = {};
   for (const s of data.suppliers) leadTimeBySupplier[s.id] = s.lead_time_weeks;
-  const arrivingThisWeek = arrivingInWeek(pastDecisions, week, leadTimeBySupplier);
 
   const weekDisruptions = disruptionsInWeek(data, week);
   const tariffSpike = weekDisruptions.find((d) => d.type === "tariff_spike");
   const capacityCut = weekDisruptions.find((d) => d.type === "supplier_capacity_cut");
+  const partialFill = weekDisruptions.find((d) => d.type === "supplier_partial_fill");
+  const fillRateBySupplier: Record<string, number> = {};
+  if (partialFill?.target_supplier_id) {
+    fillRateBySupplier[partialFill.target_supplier_id] = Number(partialFill.effect.fill_rate ?? 1);
+  }
+
+  const arrival = arrivingInWeek(pastDecisions, week, leadTimeBySupplier, fillRateBySupplier);
+  const arrivingThisWeek = arrival.arriving;
 
   const suppliers = data.suppliers.map((s) => {
     const tariffOverride =
@@ -139,6 +147,7 @@ export async function buildFacilityWeekInfo(
       leadTimeWeeks: s.lead_time_weeks,
       landedUnitCost: landedUnitCost(s, tariffOverride),
       capacityThisWeek: Math.floor(s.capacity_per_facility_per_week * capacityMultiplier),
+      suggestedSharePct: s.suggested_share_pct,
     };
   });
 

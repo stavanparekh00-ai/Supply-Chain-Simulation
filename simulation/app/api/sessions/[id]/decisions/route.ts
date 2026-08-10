@@ -117,7 +117,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
       // Include this week's just-inserted decisions when computing arrivals (a Domestic order arrives same week).
       const pastDecisionsBefore = await getPastDecisions(client, id, facilityId);
-      const arriving = arrivingInWeek(pastDecisionsBefore, week, leadTimeBySupplier);
+      const partialFill = disruptionsInWeek(data, week).find((d) => d.type === "supplier_partial_fill");
+      const fillRateBySupplier: Record<string, number> = {};
+      if (partialFill?.target_supplier_id) {
+        fillRateBySupplier[partialFill.target_supplier_id] = Number(partialFill.effect.fill_rate ?? 1);
+      }
+      const arrival = arrivingInWeek(pastDecisionsBefore, week, leadTimeBySupplier, fillRateBySupplier);
 
       const actualDemand = facilityActualDemand(data, openedFacilities, facilityId, week);
 
@@ -128,7 +133,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       const recursionResult = runRecursion({
         onHandStart: onHand,
         backlogStart: backlog,
-        arriving,
+        arriving: arrival.arriving,
+        arrivingOrdered: arrival.ordered,
         actualDemand,
         thisWeeksOrders,
         holdingCostPerUnit: data.per_period_cost_parameters.holding_cost_per_unit_per_week,
@@ -163,6 +169,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         actualDemand,
         onHandStart: onHand,
         backlogStart: backlog,
+        arrivalShortfall: arrival.shortfall,
+        arrivalBySupplier: arrival.bySupplier,
+        maxInventoryCeiling: data.per_period_cost_parameters.max_inventory_ceiling_units,
         ...recursionResult,
       });
     }

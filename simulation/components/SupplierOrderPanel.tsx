@@ -41,31 +41,43 @@ export function SupplierOrderPanel({
   const activeShare = total > 0 ? (activeNumeric / total) * 100 : 0;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-[var(--card-border)] bg-slate-50/40">
-      <div className="flex overflow-x-auto border-b border-[var(--card-border)] bg-white">
+    <div className="overflow-hidden rounded-xl border border-[var(--card-border)] bg-white">
+      <div className="border-b border-[var(--card-border)] bg-slate-50 px-4 py-2.5">
+        <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--navy)]">
+          Suppliers
+        </div>
+        <div className="mt-0.5 text-[11px] text-[var(--slate)]">
+          Soft guidance only — suggested shares by risk tier; no supplier should exceed {softMaxSharePct}% of a facility order.
+        </div>
+      </div>
+
+      <div className="flex gap-2 overflow-x-auto border-b border-[var(--card-border)] bg-white p-2">
         {suppliers.map((supplier) => {
           const isActive = supplier.id === active.id;
           const qty = numericQty(supplier.id);
+          const share = total > 0 ? (qty / total) * 100 : 0;
           return (
             <button
               key={supplier.id}
               type="button"
               onClick={() => setActiveId(supplier.id)}
               className={[
-                "relative min-w-[9.5rem] flex-1 px-3 py-3 text-left transition-colors",
-                isActive ? "bg-[var(--navy)]/[0.04]" : "hover:bg-slate-50",
+                "min-w-[10.5rem] flex-1 rounded-lg border px-3 py-2.5 text-left transition-colors",
+                isActive
+                  ? "border-[var(--navy)] bg-[var(--navy)] text-white"
+                  : "border-[var(--card-border)] bg-slate-50 hover:border-[var(--slate-light)] hover:bg-white",
               ].join(" ")}
             >
-              {isActive && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-[var(--navy)]" />}
-              <span className="block truncate text-xs font-semibold text-[var(--navy)]">{supplier.name}</span>
-              <span className="mt-1 block text-[11px] text-[var(--slate)]">
-                ${supplier.landedUnitCost.toFixed(2)} · {supplier.leadTimeWeeks} wk
+              <span className={`block truncate text-xs font-semibold ${isActive ? "text-white" : "text-[var(--navy)]"}`}>
+                {supplier.name}
               </span>
-              {qty > 0 && (
-                <span className="mt-1.5 inline-flex rounded bg-[var(--navy)] px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-white">
-                  {qty.toLocaleString()} ordered
-                </span>
-              )}
+              <span className={`mt-1 block text-[11px] ${isActive ? "text-white/80" : "text-[var(--slate)]"}`}>
+                ${supplier.landedUnitCost.toFixed(2)} · {supplier.leadTimeWeeks} wk LT
+              </span>
+              <span className={`mt-1.5 block text-[10px] ${isActive ? "text-white/75" : "text-[var(--slate-light)]"}`}>
+                Suggested ~{supplier.suggestedSharePct}%
+                {qty > 0 ? ` · now ${share.toFixed(0)}%` : ""}
+              </span>
             </button>
           );
         })}
@@ -77,6 +89,7 @@ export function SupplierOrderPanel({
             <h3 className="font-semibold text-[var(--navy)]">{active.name}</h3>
             <Badge tone="navy">{active.tier} tier</Badge>
             <Badge>Suggested ~{active.suggestedSharePct}%</Badge>
+            <Badge>Soft max {softMaxSharePct}%</Badge>
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
@@ -88,8 +101,10 @@ export function SupplierOrderPanel({
 
           <div className="mt-4">
             <div className="mb-1.5 flex justify-between text-[11px] text-[var(--slate)]">
-              <span>Weekly capacity</span>
-              <span className="tabular-nums">{active.capacityThisWeek.toLocaleString()} units</span>
+              <span>Weekly capacity used</span>
+              <span className="tabular-nums">
+                {activeNumeric.toLocaleString()} / {active.capacityThisWeek.toLocaleString()}
+              </span>
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-slate-200">
               <div
@@ -99,14 +114,10 @@ export function SupplierOrderPanel({
                 }}
               />
             </div>
-            <div className="mt-1 text-[10px] text-[var(--slate-light)]">
-              Soft guidance: aim near {active.suggestedSharePct}% of this facility&apos;s order; avoid any supplier above{" "}
-              {softMaxSharePct}%.
-            </div>
           </div>
         </div>
 
-        <label className="block rounded-lg border border-[var(--card-border)] bg-white p-3 sm:w-44">
+        <label className="block rounded-lg border border-[var(--card-border)] bg-slate-50 p-3 sm:w-48">
           <span className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--slate)]">
             Order quantity
           </span>
@@ -116,10 +127,10 @@ export function SupplierOrderPanel({
               min={0}
               max={active.capacityThisWeek}
               step={1}
-              placeholder="0"
+              placeholder="Enter qty"
               value={activeQty === "" || activeQty === undefined ? "" : activeQty}
               onChange={(event) => onChange(active.id, event.target.value)}
-              className="w-full border-0 bg-transparent p-0 text-2xl font-semibold tabular-nums text-[var(--navy)] outline-none placeholder:text-[var(--slate-light)]"
+              className="w-full border-0 bg-transparent p-0 text-2xl font-semibold tabular-nums text-[var(--navy)] outline-none placeholder:text-[var(--slate-light)] placeholder:text-base placeholder:font-normal"
             />
             <span className="text-xs text-[var(--slate)]">units</span>
           </div>
@@ -131,24 +142,19 @@ export function SupplierOrderPanel({
         </label>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[var(--card-border)] bg-white px-4 py-2.5 text-xs">
-        <span className="font-medium text-[var(--slate)]">Order allocation</span>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[var(--card-border)] bg-slate-50 px-4 py-2.5 text-xs">
+        <span className="font-medium text-[var(--slate)]">Current allocation</span>
         {suppliers.map((supplier) => {
           const qty = numericQty(supplier.id);
           const share = total > 0 ? (qty / total) * 100 : 0;
           const overSoftMax = share > softMaxSharePct;
-          const farFromSuggested = total > 0 && Math.abs(share - supplier.suggestedSharePct) > 20;
           return (
             <span key={supplier.id} className="text-[var(--slate)]">
               {supplier.name}:{" "}
-              <strong
-                className={
-                  overSoftMax ? "text-amber-700" : farFromSuggested ? "text-[var(--amber)]" : "text-[var(--foreground)]"
-                }
-              >
+              <strong className={overSoftMax ? "text-amber-700" : "text-[var(--foreground)]"}>
                 {share.toFixed(1)}%
               </strong>
-              <span className="text-[var(--slate-light)]"> (sug. {supplier.suggestedSharePct}%)</span>
+              <span className="text-[var(--slate-light)]"> / sug. {supplier.suggestedSharePct}%</span>
             </span>
           );
         })}

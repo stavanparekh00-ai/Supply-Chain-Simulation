@@ -304,6 +304,17 @@ export default function PlayPage() {
                 <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                   <MetricCard label="Facility Forecast" value={f.forecast.toLocaleString()} />
                   <MetricCard label="On-Hand Inventory" value={f.onHandStart.toLocaleString()} />
+                  <MetricCard label="Arriving This Week" value={f.arrivingThisWeek.toLocaleString()} />
+                  <MetricCard label="Backlog" value={f.backlogStart.toLocaleString()} accent={f.backlogStart > 0} />
+                  <MetricCard
+                    label={outcomeWeek !== null ? `Actual Demand · Week ${outcomeWeek}` : "Actual Demand"}
+                    value={last ? last.actualDemand.toLocaleString() : "-"}
+                    sublabel={
+                      demandDelta !== null
+                        ? `${demandDelta >= 0 ? "+" : ""}${demandDelta.toLocaleString()} vs forecast`
+                        : undefined
+                    }
+                  />
                   <MetricCard
                     label="Fill Rate"
                     value={last ? `${last.fillRatePct.toFixed(1)}%` : "-"}
@@ -314,17 +325,6 @@ export default function PlayPage() {
                     }
                     highlight
                   />
-                  <MetricCard
-                    label={outcomeWeek !== null ? `Actual Demand · Week ${outcomeWeek}` : "Actual Demand"}
-                    value={last ? last.actualDemand.toLocaleString() : "-"}
-                    sublabel={
-                      demandDelta !== null
-                        ? `${demandDelta >= 0 ? "+" : ""}${demandDelta.toLocaleString()} vs forecast`
-                        : undefined
-                    }
-                  />
-                  <MetricCard label="Backlog" value={f.backlogStart.toLocaleString()} accent={f.backlogStart > 0} />
-                  <MetricCard label="Arriving This Week" value={f.arrivingThisWeek.toLocaleString()} />
                 </div>
 
                 {f.customerForecasts.length > 0 && (

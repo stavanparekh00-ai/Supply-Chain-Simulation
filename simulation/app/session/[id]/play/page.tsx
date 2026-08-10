@@ -307,21 +307,21 @@ export default function PlayPage() {
                   <MetricCard label="On-Hand Inventory" value={f.onHandStart.toLocaleString()} />
                   <MetricCard
                     label="Fill Rate"
-                    value={last ? `${last.fillRatePct.toFixed(1)}%` : "—"}
+                    value={last ? `${last.fillRatePct.toFixed(1)}%` : "-"}
                     sublabel={
                       last && outcomeWeek !== null
                         ? `Week ${outcomeWeek} · served ${last.served.toLocaleString()}`
-                        : "After first submit"
+                        : undefined
                     }
                     highlight
                   />
                   <MetricCard
                     label={outcomeWeek !== null ? `Actual Demand · Week ${outcomeWeek}` : "Actual Demand"}
-                    value={last ? last.actualDemand.toLocaleString() : "—"}
+                    value={last ? last.actualDemand.toLocaleString() : "-"}
                     sublabel={
                       demandDelta !== null
                         ? `${demandDelta >= 0 ? "+" : ""}${demandDelta.toLocaleString()} vs forecast`
-                        : "After first submit"
+                        : undefined
                     }
                   />
                   <MetricCard label="Backlog" value={f.backlogStart.toLocaleString()} accent={f.backlogStart > 0} />

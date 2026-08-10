@@ -91,7 +91,7 @@ export function MetricCard({
       className={[
         "p-4",
         highlight
-          ? "border-[var(--navy)] bg-[var(--navy)] text-white shadow-sm"
+          ? "border-2 border-[var(--navy)] bg-[var(--navy)]/[0.06]"
           : accent
             ? "border-[var(--navy)]/25 bg-[var(--navy)]/[0.03]"
             : "",
@@ -102,24 +102,15 @@ export function MetricCard({
       <div
         className={[
           "text-[11px] font-semibold uppercase tracking-wider",
-          highlight ? "text-white/75" : "text-[var(--slate)]",
+          highlight ? "text-[var(--navy)]" : "text-[var(--slate)]",
         ].join(" ")}
       >
         {label}
       </div>
-      <div
-        className={[
-          "mt-1.5 text-[1.6rem] font-semibold tabular-nums leading-none",
-          highlight ? "text-white" : "text-[var(--navy)]",
-        ].join(" ")}
-      >
-        {value}
+      <div className="mt-1.5 text-[1.6rem] font-semibold tabular-nums leading-none text-[var(--navy)]">
+        {value === "" || value === null || value === undefined ? "-" : value}
       </div>
-      {sublabel && (
-        <div className={["mt-1.5 text-xs", highlight ? "text-white/70" : "text-[var(--slate-light)]"].join(" ")}>
-          {sublabel}
-        </div>
-      )}
+      {sublabel && <div className="mt-1.5 text-xs text-[var(--slate-light)]">{sublabel}</div>}
     </Card>
   );
 }

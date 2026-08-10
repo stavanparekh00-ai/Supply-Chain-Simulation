@@ -36,7 +36,7 @@ class Supplier:
     name: str
     origin_country: str
     tier: str  # "High" | "Medium" | "Low"
-    diversification_cap_pct: float  # e.g. 70 means this supplier may cover at most 70% of a facility's total order
+    suggested_share_pct: float  # soft risk-tier guidance for players (e.g. 70 / 50 / 25)
     base_unit_cost: float
     baseline_tariff_pct: float  # 0 for domestic/nearshore suppliers with no tariff exposure
     lead_time_weeks: int
@@ -312,7 +312,7 @@ if __name__ == "__main__":
     print(f"Disruptions: {[(d.week, d.type) for d in data.disruption_schedule]}")
     overseas = data.supplier_by_id("overseas_manufacturer")
     print(f"Overseas landed cost normally: ${overseas.landed_unit_cost()}, "
-          f"during tariff spike: ${overseas.landed_unit_cost(tariff_pct_override=100)}")
+          f"during tariff spike: ${overseas.landed_unit_cost(tariff_pct_override=200)}")
     print(f"C5 actual demand, week 6 (demand spike week): {data.actual_demand('C5', 6)}")
     print(f"C5 actual demand, week 5 (normal week): {data.actual_demand('C5', 5)}")
 

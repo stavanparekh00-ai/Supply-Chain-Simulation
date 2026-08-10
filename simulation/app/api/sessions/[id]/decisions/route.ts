@@ -53,7 +53,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     for (const facilityId of openedFacilities) {
       const facilityOrders = orders.filter((order) => order.facilityId === facilityId);
-      const totalOrder = facilityOrders.reduce((sum, order) => sum + order.quantity, 0);
       const seenSuppliers = new Set<string>();
 
       for (const order of facilityOrders) {
@@ -87,18 +86,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             { status: 400 }
           );
         }
-        if (
-          totalOrder > 0 &&
-          order.quantity / totalOrder > supplier.diversification_cap_pct / 100 + 1e-9
-        ) {
-          await client.query("ROLLBACK");
-          return NextResponse.json(
-            {
-              error: `${supplier.name} exceeds its ${supplier.diversification_cap_pct}% maximum share at ${facilityId}. Rebalance this facility's order.`,
-            },
-            { status: 400 }
-          );
-        }
+        // Supplier share limits are soft guidance only for players -- do not block submit.
       }
     }
 

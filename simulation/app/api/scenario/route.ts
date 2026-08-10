@@ -33,9 +33,8 @@ export async function GET() {
     suppliers: data.suppliers.map((s) => ({
       id: s.id,
       name: s.name,
-      origin_country: s.origin_country,
       tier: s.tier,
-      diversification_cap_pct: s.diversification_cap_pct,
+      suggested_share_pct: s.suggested_share_pct,
       base_unit_cost: s.base_unit_cost,
       baseline_tariff_pct: s.baseline_tariff_pct,
       lead_time_weeks: s.lead_time_weeks,
@@ -43,6 +42,10 @@ export async function GET() {
       defect_rate_pct: s.defect_rate_pct,
       capacity_per_facility_per_week: s.capacity_per_facility_per_week,
     })),
+    allocation_guidance: data.allocation_guidance ?? {
+      soft_max_share_pct: 50,
+      description: "Soft allocation guidance for players.",
+    },
     per_period_cost_parameters: {
       holding_cost_per_unit_per_week: data.per_period_cost_parameters.holding_cost_per_unit_per_week,
       backorder_cost_per_unit_per_week: data.per_period_cost_parameters.backorder_cost_per_unit_per_week,

@@ -61,3 +61,23 @@ label:has(input:focus-visible) {
   background: var(--slate-light);
   border-radius: 999px;
 }
+
+@keyframes map-flow-in {
+  from {
+    opacity: 0;
+    stroke-dashoffset: 12;
+  }
+  to {
+    opacity: 1;
+    stroke-dashoffset: 0;
+  }
+}
+
+.map-assignment-flow line {
+  stroke-dasharray: 2 1.2;
+  animation: map-flow-in 0.55s ease-out both;
+}
+
+.map-assignment-flow polygon {
+  animation: map-flow-in 0.55s ease-out both;
+}

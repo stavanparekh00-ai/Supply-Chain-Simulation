@@ -1,18 +1,40 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, type ReactNode } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { PageShell, PageHeader, Card, MetricCard, PrimaryButton, NeutralAlert, Spinner } from "@/components/ui";
 import { AppHeader } from "@/components/AppHeader";
 import { SupplierOrderPanel, SupplierOrderInfo } from "@/components/SupplierOrderPanel";
 
+interface CustomerForecast {
+  customerId: string;
+  customerName: string;
+  forecast: number;
+}
 interface FacilityWeekInfo {
   facilityId: string;
   onHandStart: number;
   backlogStart: number;
   forecast: number;
+  customerForecasts: CustomerForecast[];
   arrivingThisWeek: number;
+  maxInventoryCeiling: number;
+  minInventoryFloor: number;
+  softMaxSharePct: number;
   suppliers: SupplierOrderInfo[];
 }
 interface DisruptionEvent {
@@ -25,8 +47,17 @@ interface PeriodInfo {
   horizonWeeks: number;
   minInventoryFloor: number;
   maxInventoryCeiling: number;
+  softMaxSharePct: number;
   disruptionsThisWeek: DisruptionEvent[];
   facilities: FacilityWeekInfo[];
+  charts: {
+    cumulativeCostByWeek: { week: number; cost: number }[];
+    backlogByWeek: { week: number; backlog: number }[];
+    demandVsForecast: { week: number; demand: number; forecast: number }[];
+    ordersByFacility: Record<string, number>[];
+    openedFacilities: string[];
+    currentWeekForecast: number;
+  };
   performance: {
     cumulativeCost: number;
     fillRatePct: number;
@@ -55,11 +86,13 @@ interface PeriodFeedback {
   completed: boolean;
 }
 
+type OrderDraft = Record<string, Record<string, number | "">>;
+
 export default function PlayPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const [period, setPeriod] = useState<PeriodInfo | null>(null);
-  const [orders, setOrders] = useState<Record<string, Record<string, number>>>({});
+  const [orders, setOrders] = useState<OrderDraft>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<PeriodFeedback | null>(null);
@@ -73,10 +106,10 @@ export default function PlayPage() {
     const data: PeriodInfo = await res.json();
     setPeriod(data);
     setFeedback(null);
-    const initial: Record<string, Record<string, number>> = {};
+    const initial: OrderDraft = {};
     for (const f of data.facilities) {
       initial[f.facilityId] = {};
-      for (const s of f.suppliers) initial[f.facilityId][s.id] = 0;
+      for (const s of f.suppliers) initial[f.facilityId][s.id] = "";
     }
     setOrders(initial);
   }, [params.id]);
@@ -89,16 +122,29 @@ export default function PlayPage() {
   }, [loadPeriod]);
 
   function setOrder(facilityId: string, supplierId: string, value: string) {
+    if (value.trim() === "") {
+      setOrders((prev) => ({ ...prev, [facilityId]: { ...prev[facilityId], [supplierId]: "" } }));
+      return;
+    }
     const qty = Math.max(0, Math.floor(Number(value) || 0));
     setOrders((prev) => ({ ...prev, [facilityId]: { ...prev[facilityId], [supplierId]: qty } }));
+  }
+
+  function qtyOf(facilityId: string, supplierId: string): number {
+    const value = orders[facilityId]?.[supplierId];
+    return typeof value === "number" ? value : 0;
   }
 
   async function handleSubmit() {
     if (!period) return;
     setSubmitting(true);
     setError(null);
-    const orderList = Object.entries(orders).flatMap(([facilityId, bySupplier]) =>
-      Object.entries(bySupplier).map(([supplierId, quantity]) => ({ facilityId, supplierId, quantity }))
+    const orderList = period.facilities.flatMap((facility) =>
+      facility.suppliers.map((supplier) => ({
+        facilityId: facility.facilityId,
+        supplierId: supplier.id,
+        quantity: qtyOf(facility.facilityId, supplier.id),
+      }))
     );
     const res = await fetch(`/api/sessions/${params.id}/decisions`, {
       method: "POST",
@@ -143,24 +189,42 @@ export default function PlayPage() {
     );
   }
 
-  const orderIssues = period.facilities.flatMap((facility) => {
-    const total = facility.suppliers.reduce(
-      (sum, supplier) => sum + (orders[facility.facilityId]?.[supplier.id] ?? 0),
-      0
-    );
-    return facility.suppliers.flatMap((supplier) => {
-      const quantity = orders[facility.facilityId]?.[supplier.id] ?? 0;
+  const hardIssues: string[] = [];
+  const softWarnings: string[] = [];
+
+  for (const facility of period.facilities) {
+    const total = facility.suppliers.reduce((sum, supplier) => sum + qtyOf(facility.facilityId, supplier.id), 0);
+    const projectedEnd =
+      facility.onHandStart + facility.arrivingThisWeek + total - facility.forecast - facility.backlogStart;
+
+    if (projectedEnd > facility.maxInventoryCeiling) {
+      softWarnings.push(
+        `${facility.facilityId}: projected ending inventory (~${Math.round(projectedEnd).toLocaleString()}) is above the ${facility.maxInventoryCeiling.toLocaleString()}-unit ceiling.`
+      );
+    }
+    if (projectedEnd < facility.minInventoryFloor && total === 0) {
+      softWarnings.push(
+        `${facility.facilityId}: projected inventory may fall below the ${facility.minInventoryFloor.toLocaleString()}-unit floor.`
+      );
+    }
+
+    for (const supplier of facility.suppliers) {
+      const quantity = qtyOf(facility.facilityId, supplier.id);
       if (quantity > supplier.capacityThisWeek) {
-        return [`${facility.facilityId}: ${supplier.name} exceeds available capacity.`];
+        hardIssues.push(`${facility.facilityId}: ${supplier.name} exceeds available capacity.`);
       }
-      if (total > 0 && (quantity / total) * 100 > supplier.diversificationCapPct + 1e-9) {
-        return [
-          `${facility.facilityId}: ${supplier.name} exceeds its ${supplier.diversificationCapPct}% maximum share.`,
-        ];
+      if (total > 0) {
+        const share = (quantity / total) * 100;
+        if (share > period.softMaxSharePct + 1e-9) {
+          softWarnings.push(
+            `${facility.facilityId}: ${supplier.name} is ${share.toFixed(0)}% of this order (soft max ${period.softMaxSharePct}%).`
+          );
+        }
       }
-      return [];
-    });
-  });
+    }
+  }
+
+  const facilityColors = ["#1e3a5f", "#b45309", "#0f766e", "#7c2d12", "#334155"];
 
   return (
     <>
@@ -168,36 +232,122 @@ export default function PlayPage() {
       <PageShell>
         <PageHeader title="Place Your Orders" subtitle={`Period ${period.week} of ${period.horizonWeeks}`} />
 
-        {period.week > 1 && (
-          <Card className="mb-6 overflow-hidden">
-            <div className="grid grid-cols-2 border-b border-[var(--card-border)] sm:grid-cols-4">
-              <Kpi label="Cumulative Cost" value={`$${period.performance.cumulativeCost.toLocaleString()}`} />
-              <Kpi label="Fill Rate" value={`${period.performance.fillRatePct.toFixed(1)}%`} />
-              <Kpi label="Current Backlog" value={period.performance.currentBacklog.toLocaleString()} />
-              <Kpi label="Ending Inventory" value={period.performance.endingInventory.toLocaleString()} />
+        {feedback && (
+          <Card className="mb-6 overflow-hidden border-amber-300 bg-[var(--amber-bg)]">
+            <div className="border-b border-amber-200 px-5 py-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-800">Actual demand revealed</div>
+              <div className="mt-1 text-lg font-semibold text-amber-950">
+                Period {feedback.week} demand:{" "}
+                {feedback.results.reduce((sum, r) => sum + r.actualDemand, 0).toLocaleString()} units
+              </div>
             </div>
-            <div className="h-28 px-3 pt-3">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={period.performance.cumulativeCostByWeek} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="costArea" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#1e3a5f" stopOpacity={0.2} />
-                      <stop offset="100%" stopColor="#1e3a5f" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#edf0f4" vertical={false} />
-                  <XAxis dataKey="week" tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-                  <YAxis hide />
-                  <Tooltip
-                    formatter={(value) => [`$${Number(value).toLocaleString()}`, "Cumulative cost"]}
-                    contentStyle={{ borderRadius: 8, borderColor: "#e5e8ee", fontSize: 12 }}
-                  />
-                  <Area type="monotone" dataKey="cost" stroke="#1e3a5f" strokeWidth={2} fill="url(#costArea)" />
-                </AreaChart>
-              </ResponsiveContainer>
+            <div className="grid gap-0 sm:grid-cols-3">
+              {feedback.results.map((result) => {
+                const forecast = period.facilities.find((f) => f.facilityId === result.facilityId)?.forecast ?? 0;
+                const delta = result.actualDemand - forecast;
+                return (
+                  <div key={result.facilityId} className="border-t border-amber-200 px-5 py-3 sm:border-t-0 sm:border-l first:border-l-0">
+                    <div className="text-xs font-semibold text-amber-900">Facility {result.facilityId}</div>
+                    <div className="mt-1 text-2xl font-semibold tabular-nums text-amber-950">
+                      {result.actualDemand.toLocaleString()}
+                    </div>
+                    <div className="mt-0.5 text-[11px] text-amber-800">
+                      Forecast {forecast.toLocaleString()} ({delta >= 0 ? "+" : ""}
+                      {delta.toLocaleString()})
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </Card>
         )}
+
+        <Card className="mb-6 overflow-hidden">
+          <div className="grid grid-cols-2 border-b border-[var(--card-border)] sm:grid-cols-4">
+            <Kpi label="Cumulative Cost" value={`$${period.performance.cumulativeCost.toLocaleString()}`} />
+            <Kpi label="Fill Rate" value={`${period.performance.fillRatePct.toFixed(1)}%`} />
+            <Kpi label="Current Backlog" value={period.performance.currentBacklog.toLocaleString()} />
+            <Kpi label="Ending Inventory" value={period.performance.endingInventory.toLocaleString()} />
+          </div>
+
+          <div className="grid gap-4 p-4 lg:grid-cols-3">
+            <ChartPanel title="Backlog by week">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={
+                    period.charts.backlogByWeek.length > 0
+                      ? period.charts.backlogByWeek
+                      : [{ week: period.week, backlog: period.facilities.reduce((s, f) => s + f.backlogStart, 0) }]
+                  }
+                  margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#edf0f4" vertical={false} />
+                  <XAxis dataKey="week" tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} width={32} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ borderRadius: 8, borderColor: "#e5e8ee", fontSize: 12 }} />
+                  <Area type="monotone" dataKey="backlog" stroke="#b45309" fill="#fef6e7" strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </ChartPanel>
+
+            <ChartPanel title="Orders by facility">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={
+                    period.charts.ordersByFacility.length > 0
+                      ? period.charts.ordersByFacility
+                      : [
+                          {
+                            week: period.week,
+                            ...Object.fromEntries(period.facilities.map((f) => [f.facilityId, 0])),
+                          },
+                        ]
+                  }
+                  margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#edf0f4" vertical={false} />
+                  <XAxis dataKey="week" tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} width={32} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ borderRadius: 8, borderColor: "#e5e8ee", fontSize: 12 }} />
+                  <Legend wrapperStyle={{ fontSize: 10 }} />
+                  {period.charts.openedFacilities.map((facilityId, index) => (
+                    <Bar
+                      key={facilityId}
+                      dataKey={facilityId}
+                      stackId="orders"
+                      fill={facilityColors[index % facilityColors.length]}
+                    />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartPanel>
+
+            <ChartPanel title="Demand vs forecast">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={
+                    (period.charts.demandVsForecast.length > 0
+                      ? period.charts.demandVsForecast
+                      : [{ week: period.week, forecast: period.charts.currentWeekForecast }]) as {
+                      week: number;
+                      forecast: number;
+                      demand?: number;
+                    }[]
+                  }
+                  margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#edf0f4" vertical={false} />
+                  <XAxis dataKey="week" tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} width={36} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ borderRadius: 8, borderColor: "#e5e8ee", fontSize: 12 }} />
+                  <Legend wrapperStyle={{ fontSize: 10 }} />
+                  <Line type="monotone" dataKey="forecast" stroke="#1e3a5f" strokeWidth={2} dot={{ r: 2.5 }} />
+                  <Line type="monotone" dataKey="demand" stroke="#b45309" strokeWidth={2} dot={{ r: 2.5 }} connectNulls={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartPanel>
+          </div>
+        </Card>
 
         {period.disruptionsThisWeek.length > 0 && (
           <div className="mb-6 space-y-2">
@@ -214,29 +364,57 @@ export default function PlayPage() {
         )}
 
         <div className="space-y-6">
-          {period.facilities.map((f) => (
-            <Card key={f.facilityId} className="p-5">
-              <div className="mb-4 flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[var(--navy)] text-[11px] font-bold text-white">
-                  {f.facilityId}
-                </span>
-                <h2 className="text-sm font-semibold text-[var(--navy)]">Facility {f.facilityId}</h2>
-              </div>
+          {period.facilities.map((f) => {
+            const totalOrder = f.suppliers.reduce((sum, s) => sum + qtyOf(f.facilityId, s.id), 0);
+            const projectedEnd = f.onHandStart + f.arrivingThisWeek + totalOrder - f.forecast - f.backlogStart;
+            return (
+              <Card key={f.facilityId} className="p-5">
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[var(--navy)] text-[11px] font-bold text-white">
+                    {f.facilityId}
+                  </span>
+                  <h2 className="text-sm font-semibold text-[var(--navy)]">Facility {f.facilityId}</h2>
+                  <span className="text-[11px] text-[var(--slate)]">
+                    Inventory guide: floor {f.minInventoryFloor.toLocaleString()} · ceiling{" "}
+                    {f.maxInventoryCeiling.toLocaleString()}
+                  </span>
+                </div>
 
-              <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <MetricCard label="On-Hand Inventory" value={f.onHandStart.toLocaleString()} />
-                <MetricCard label="Backlog" value={f.backlogStart.toLocaleString()} accent={f.backlogStart > 0} />
-                <MetricCard label="Forecasted Demand" value={f.forecast.toLocaleString()} />
-                <MetricCard label="Arriving This Week" value={f.arrivingThisWeek.toLocaleString()} />
-              </div>
+                <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                  <MetricCard label="On-Hand Inventory" value={f.onHandStart.toLocaleString()} />
+                  <MetricCard label="Backlog" value={f.backlogStart.toLocaleString()} accent={f.backlogStart > 0} />
+                  <MetricCard label="Facility Forecast" value={f.forecast.toLocaleString()} />
+                  <MetricCard label="Arriving This Week" value={f.arrivingThisWeek.toLocaleString()} />
+                  <MetricCard
+                    label="Projected End Inv."
+                    value={Math.round(projectedEnd).toLocaleString()}
+                    accent={projectedEnd > f.maxInventoryCeiling || projectedEnd < f.minInventoryFloor}
+                  />
+                </div>
 
-              <SupplierOrderPanel
-                suppliers={f.suppliers}
-                quantities={orders[f.facilityId] ?? {}}
-                onChange={(supplierId, value) => setOrder(f.facilityId, supplierId, value)}
-              />
-            </Card>
-          ))}
+                {f.customerForecasts.length > 0 && (
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    {f.customerForecasts.map((customer) => (
+                      <span
+                        key={customer.customerId}
+                        className="rounded border border-[var(--card-border)] bg-slate-50 px-2.5 py-1 text-[11px] text-[var(--slate)]"
+                      >
+                        <span className="font-semibold text-[var(--navy)]">{customer.customerId}</span>{" "}
+                        {customer.customerName}: {customer.forecast.toLocaleString()}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <SupplierOrderPanel
+                  suppliers={f.suppliers}
+                  quantities={orders[f.facilityId] ?? {}}
+                  softMaxSharePct={period.softMaxSharePct}
+                  onChange={(supplierId, value) => setOrder(f.facilityId, supplierId, value)}
+                />
+              </Card>
+            );
+          })}
         </div>
 
         {feedback ? (
@@ -247,15 +425,27 @@ export default function PlayPage() {
           />
         ) : (
           <div className="mt-6 flex flex-col items-end gap-3">
-            {orderIssues.length > 0 && (
+            {hardIssues.length > 0 && (
               <div className="w-full rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">
-                <div className="font-semibold">Rebalance orders before submitting</div>
+                <div className="font-semibold">Fix capacity issues before submitting</div>
                 <ul className="mt-1 list-disc pl-4">
-                  {orderIssues.map((issue) => <li key={issue}>{issue}</li>)}
+                  {hardIssues.map((issue) => (
+                    <li key={issue}>{issue}</li>
+                  ))}
                 </ul>
               </div>
             )}
-            <PrimaryButton onClick={handleSubmit} disabled={submitting || orderIssues.length > 0}>
+            {softWarnings.length > 0 && (
+              <div className="w-full rounded-lg border border-amber-200 bg-[var(--amber-bg)] px-4 py-3 text-xs text-amber-900">
+                <div className="font-semibold">Soft guidance (submission still allowed)</div>
+                <ul className="mt-1 list-disc pl-4">
+                  {softWarnings.map((issue) => (
+                    <li key={issue}>{issue}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <PrimaryButton onClick={handleSubmit} disabled={submitting || hardIssues.length > 0}>
               {submitting ? "Submitting..." : "Submit Orders & Reveal Actual Demand"}
             </PrimaryButton>
           </div>
@@ -270,6 +460,15 @@ function Kpi({ label, value }: { label: string; value: string }) {
     <div className="border-r border-[var(--card-border)] px-4 py-3 last:border-r-0">
       <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--slate-light)]">{label}</div>
       <div className="mt-1 text-lg font-semibold tabular-nums text-[var(--navy)]">{value}</div>
+    </div>
+  );
+}
+
+function ChartPanel({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div>
+      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--slate)]">{title}</div>
+      <div className="h-40">{children}</div>
     </div>
   );
 }
@@ -293,7 +492,7 @@ function PeriodOutcome({
     <Card className="mt-6 overflow-hidden border-[var(--navy)]/20">
       <div className="border-b border-[var(--card-border)] bg-[var(--navy)] px-5 py-3.5 text-white">
         <div className="text-xs font-semibold uppercase tracking-wider text-white/70">Period {feedback.week} complete</div>
-        <div className="mt-1 text-lg font-semibold">Actual demand has been revealed</div>
+        <div className="mt-1 text-lg font-semibold">Review results, then continue</div>
       </div>
 
       <div className="grid grid-cols-2 border-b border-[var(--card-border)] sm:grid-cols-4">
@@ -302,6 +501,7 @@ function PeriodOutcome({
           label="Actual Demand"
           value={totalActual.toLocaleString()}
           detail={`${totalActual >= totalForecast ? "+" : ""}${(((totalActual - totalForecast) / Math.max(1, totalForecast)) * 100).toFixed(1)}% vs forecast`}
+          emphasize
         />
         <OutcomeMetric label="Period Fill Rate" value={`${fillRate.toFixed(1)}%`} />
         <OutcomeMetric label="Period Cost" value={`$${Math.round(totalCost).toLocaleString()}`} />
@@ -326,7 +526,9 @@ function PeriodOutcome({
                 <tr key={result.facilityId} className="border-t border-[var(--card-border)]">
                   <td className="px-3 py-2.5 font-semibold text-[var(--navy)]">{result.facilityId}</td>
                   <td className="px-3 py-2.5 tabular-nums">{forecasts[result.facilityId]?.toLocaleString()}</td>
-                  <td className="px-3 py-2.5 font-medium tabular-nums">{result.actualDemand.toLocaleString()}</td>
+                  <td className="bg-[var(--amber-bg)] px-3 py-2.5 font-semibold tabular-nums text-amber-950">
+                    {result.actualDemand.toLocaleString()}
+                  </td>
                   <td className="px-3 py-2.5 tabular-nums">{result.newServed.toLocaleString()}</td>
                   <td className="px-3 py-2.5 tabular-nums">{result.onHandEnd.toLocaleString()}</td>
                   <td className={`px-3 py-2.5 font-medium tabular-nums ${result.backlogEnd > 0 ? "text-red-600" : ""}`}>
@@ -349,11 +551,23 @@ function PeriodOutcome({
   );
 }
 
-function OutcomeMetric({ label, value, detail }: { label: string; value: string; detail?: string }) {
+function OutcomeMetric({
+  label,
+  value,
+  detail,
+  emphasize,
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+  emphasize?: boolean;
+}) {
   return (
-    <div className="border-r border-[var(--card-border)] px-4 py-3 last:border-r-0">
+    <div className={`border-r border-[var(--card-border)] px-4 py-3 last:border-r-0 ${emphasize ? "bg-[var(--amber-bg)]" : ""}`}>
       <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--slate-light)]">{label}</div>
-      <div className="mt-1 text-xl font-semibold tabular-nums text-[var(--navy)]">{value}</div>
+      <div className={`mt-1 text-xl font-semibold tabular-nums ${emphasize ? "text-amber-950" : "text-[var(--navy)]"}`}>
+        {value}
+      </div>
       {detail && <div className="mt-0.5 text-[10px] text-[var(--slate)]">{detail}</div>}
     </div>
   );

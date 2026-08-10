@@ -17,7 +17,7 @@ export interface Supplier {
   name: string;
   origin_country: string;
   tier: "High" | "Medium" | "Low";
-  diversification_cap_pct: number;
+  suggested_share_pct: number;
   base_unit_cost: number;
   baseline_tariff_pct: number;
   lead_time_weeks: number;
@@ -68,6 +68,10 @@ export interface ScenarioData {
     horizon_periods: number;
     notes: string;
   };
+  allocation_guidance?: {
+    description: string;
+    soft_max_share_pct: number;
+  };
   suppliers: Supplier[];
   candidate_facilities: CandidateFacility[];
   customers: Customer[];
@@ -108,6 +112,10 @@ export function getCustomerById(data: ScenarioData, customerId: string): Custome
   return c;
 }
 
+export function softMaxSharePct(data: ScenarioData): number {
+  return data.allocation_guidance?.soft_max_share_pct ?? 50;
+}
+
 /**
  * Which customers are served by a given facility, computed dynamically for
  * WHATEVER set of facilities this particular session opened -- never
@@ -132,7 +140,7 @@ function cheapestFacilityFor(data: ScenarioData, openedFacilities: string[], cus
   let bestCost = data.transport_cost_matrix[best][customerId];
   for (const f of openedFacilities.slice(1)) {
     const cost = data.transport_cost_matrix[f][customerId];
-    if (cost < bestCost) {
+    if (cost < bestCost || (cost === bestCost && f < best)) {
       best = f;
       bestCost = cost;
     }
@@ -147,12 +155,29 @@ export function landedUnitCost(supplier: Supplier, tariffPctOverride?: number): 
 }
 
 /**
+ * SAFE, no-lookahead accessor: demand history for a single customer usable
+ * for FORECASTING before deciding orders in `currentWeek`. Includes
+ * pre-simulation history plus every week already revealed
+ * (weeks 1..currentWeek-1). Never includes currentWeek's own actual demand
+ * or any future week.
+ */
+export function customerDemandHistoryForForecast(
+  data: ScenarioData,
+  customerId: string,
+  currentWeek: number
+): number[] {
+  if (currentWeek < 1) throw new Error("currentWeek must be >= 1");
+  const customer = getCustomerById(data, customerId);
+  return [
+    ...customer.historical_demand_last_8_weeks,
+    ...customer.actual_demand_ground_truth_by_week.slice(0, currentWeek - 1),
+  ];
+}
+
+/**
  * SAFE, no-lookahead accessor: total demand for a facility (summed across
- * its assigned customers) usable for FORECASTING before deciding orders in
- * `currentWeek`. Includes pre-simulation history plus every week already
- * revealed (weeks 1..currentWeek-1). Never includes currentWeek's own
- * actual demand or any future week. Mirrors
- * `demand_history_available_for_forecast` in schema.py.
+ * its assigned customers) usable for charting / legacy aggregate views.
+ * Prefer forecasting per customer then summing (see gameEngine).
  */
 export function facilityDemandHistoryForForecast(
   data: ScenarioData,

@@ -3,31 +3,42 @@ import { Pool, PoolClient } from "pg";
 type Queryable = Pool | PoolClient;
 import {
   ScenarioData,
-  facilityDemandHistoryForForecast,
+  customersForFacility,
+  customerDemandHistoryForForecast,
   disruptionsInWeek,
   landedUnitCost,
   getSupplierById,
+  softMaxSharePct,
 } from "@/lib/scenarioData";
 import { computeForecast, ForecastingMethodId } from "@/lib/forecasting";
 import { arrivingInWeek, OrderDecision } from "@/lib/recursion";
+
+export interface CustomerForecast {
+  customerId: string;
+  customerName: string;
+  forecast: number;
+}
 
 export interface FacilityWeekInfo {
   facilityId: string;
   onHandStart: number;
   backlogStart: number;
   forecast: number;
+  customerForecasts: CustomerForecast[];
   arrivingThisWeek: number;
+  maxInventoryCeiling: number;
+  minInventoryFloor: number;
+  softMaxSharePct: number;
   suppliers: {
     id: string;
     name: string;
-    originCountry: string;
     tier: string;
     reliabilityPct: number;
     defectRatePct: number;
     leadTimeWeeks: number;
     landedUnitCost: number;
     capacityThisWeek: number;
-    diversificationCapPct: number;
+    suggestedSharePct: number;
   }[];
 }
 
@@ -60,6 +71,29 @@ export async function getPastDecisions(pool: Queryable, sessionId: string, facil
   return result.rows.map((r) => ({ week: r.week, supplierId: r.supplier_id, quantity: Number(r.order_quantity) }));
 }
 
+/** Forecast each assigned customer independently, then sum to the facility. */
+export function forecastFacilityDemand(
+  data: ScenarioData,
+  openedFacilities: string[],
+  facilityId: string,
+  week: number,
+  forecastingMethodId: ForecastingMethodId
+): { forecast: number; customerForecasts: CustomerForecast[] } {
+  const customers = customersForFacility(data, openedFacilities, facilityId);
+  const customerForecasts = customers.map((customer) => {
+    const history = customerDemandHistoryForForecast(data, customer.id, week);
+    return {
+      customerId: customer.id,
+      customerName: customer.name,
+      forecast: computeForecast(forecastingMethodId, history),
+    };
+  });
+  return {
+    forecast: customerForecasts.reduce((sum, c) => sum + c.forecast, 0),
+    customerForecasts,
+  };
+}
+
 export async function buildFacilityWeekInfo(
   pool: Queryable,
   data: ScenarioData,
@@ -77,8 +111,13 @@ export async function buildFacilityWeekInfo(
     data.per_period_cost_parameters.initial_on_hand_inventory_units
   );
 
-  const history = facilityDemandHistoryForForecast(data, openedFacilities, facilityId, week);
-  const forecast = computeForecast(forecastingMethodId, history);
+  const { forecast, customerForecasts } = forecastFacilityDemand(
+    data,
+    openedFacilities,
+    facilityId,
+    week,
+    forecastingMethodId
+  );
 
   const pastDecisions = await getPastDecisions(pool, sessionId, facilityId);
   const leadTimeBySupplier: Record<string, number> = {};
@@ -97,14 +136,13 @@ export async function buildFacilityWeekInfo(
     return {
       id: s.id,
       name: s.name,
-      originCountry: s.origin_country,
       tier: s.tier,
       reliabilityPct: s.reliability_pct,
       defectRatePct: s.defect_rate_pct,
       leadTimeWeeks: s.lead_time_weeks,
       landedUnitCost: landedUnitCost(s, tariffOverride),
       capacityThisWeek: Math.floor(s.capacity_per_facility_per_week * capacityMultiplier),
-      diversificationCapPct: s.diversification_cap_pct,
+      suggestedSharePct: s.suggested_share_pct,
     };
   });
 
@@ -113,7 +151,11 @@ export async function buildFacilityWeekInfo(
     onHandStart: onHand,
     backlogStart: backlog,
     forecast,
+    customerForecasts,
     arrivingThisWeek,
+    maxInventoryCeiling: data.per_period_cost_parameters.max_inventory_ceiling_units,
+    minInventoryFloor: data.per_period_cost_parameters.min_inventory_floor_units,
+    softMaxSharePct: softMaxSharePct(data),
     suppliers,
   };
 }

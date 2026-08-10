@@ -1,14 +1,58 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PageShell, Card, PrimaryButton } from "@/components/ui";
+import { PageShell, Card, PrimaryButton, Spinner } from "@/components/ui";
+import {
+  clearActiveSessionId,
+  getActiveSessionId,
+  setActiveSessionId,
+} from "@/lib/activeSession";
+import { currentStage, stagePath } from "@/lib/sessionStages";
 
 export default function WelcomePage() {
   const router = useRouter();
   const [participantName, setParticipantName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingResume, setCheckingResume] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Mid-run players who hit the name screen (browser back) are bounced
+  // back into their session. Network design is the furthest back allowed.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function resumeIfNeeded() {
+      const activeId = getActiveSessionId();
+      if (!activeId) {
+        setCheckingResume(false);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/sessions/${activeId}`);
+        if (!res.ok) {
+          clearActiveSessionId();
+          if (!cancelled) setCheckingResume(false);
+          return;
+        }
+        const session = await res.json();
+        if (session.status === "completed") {
+          // Finished runs may exit to the name screen to start fresh.
+          if (!cancelled) setCheckingResume(false);
+          return;
+        }
+        router.replace(stagePath(activeId, currentStage(session)));
+      } catch {
+        if (!cancelled) setCheckingResume(false);
+      }
+    }
+
+    void resumeIfNeeded();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   async function handleStart() {
     const cleanedName = participantName.trim();
@@ -29,7 +73,19 @@ export default function WelcomePage() {
       setLoading(false);
       return;
     }
-    router.push(`/session/${session.id}/network`);
+    setActiveSessionId(session.id);
+    // Replace so the name screen is not sitting behind network in history.
+    router.replace(`/session/${session.id}/network`);
+  }
+
+  if (checkingResume) {
+    return (
+      <PageShell narrow>
+        <div className="flex min-h-[80vh] items-center justify-center">
+          <Spinner />
+        </div>
+      </PageShell>
+    );
   }
 
   return (

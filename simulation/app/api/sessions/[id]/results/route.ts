@@ -13,6 +13,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Session not found" }, { status: 404 });
   }
   const session = sessionRes.rows[0];
+  if (session.status !== "completed") {
+    return NextResponse.json(
+      { error: "Results are available only after this simulation run is completed." },
+      { status: 409 }
+    );
+  }
 
   const periodStateRes = await pool.query(
     `SELECT * FROM period_state WHERE session_id = $1 ORDER BY week ASC, facility_id ASC`,

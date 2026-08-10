@@ -43,6 +43,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const pool = getPool();
+  const existing = await pool.query(
+    `SELECT status, forecasting_method_id, opened_facilities FROM sessions WHERE id = $1`,
+    [id]
+  );
+  if (existing.rows.length === 0) {
+    return NextResponse.json({ error: "Session not found" }, { status: 404 });
+  }
+  const session = existing.rows[0];
+  if (session.forecasting_method_id || session.status === "playing" || session.status === "completed") {
+    return NextResponse.json(
+      { error: "Facility network is locked after forecasting begins and cannot be changed." },
+      { status: 409 }
+    );
+  }
+
   const result = await pool.query(
     `UPDATE sessions
      SET opened_facilities = $1, network_fixed_cost = $2, network_transport_cost = $3

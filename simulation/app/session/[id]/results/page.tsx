@@ -16,6 +16,8 @@ import {
 } from "recharts";
 import { PageShell, PageHeader, Card, MetricCard, NeutralAlert, Spinner, SecondaryButton } from "@/components/ui";
 import { AppHeader } from "@/components/AppHeader";
+import { useSessionGate } from "@/hooks/useSessionGate";
+import { clearActiveSessionId } from "@/lib/activeSession";
 
 interface PeriodStateRow {
   week: number;
@@ -79,20 +81,41 @@ interface ResultsResponse {
 export default function ResultsPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const gate = useSessionGate(params.id, "results");
   const [data, setData] = useState<ResultsResponse | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!gate.ready) return;
     fetch(`/api/sessions/${params.id}/results`)
-      .then((r) => r.json())
-      .then(setData);
-  }, [params.id]);
+      .then(async (r) => {
+        const body = await r.json();
+        if (!r.ok) {
+          setLoadError(body.error ?? "Results are not available yet.");
+          return;
+        }
+        setData(body);
+      })
+      .catch(() => setLoadError("Results are not available yet."));
+  }, [gate.ready, params.id]);
 
-  if (!data) {
+  if (!gate.ready || (!data && !loadError)) {
     return (
       <>
-        <AppHeader activeStep="results" />
+        <AppHeader activeStep="results" sessionId={params.id} unlockedSteps={gate.unlocked} />
         <PageShell>
           <Spinner />
+        </PageShell>
+      </>
+    );
+  }
+
+  if (loadError || !data) {
+    return (
+      <>
+        <AppHeader activeStep="results" sessionId={params.id} unlockedSteps={gate.unlocked} />
+        <PageShell>
+          <p className="text-sm text-red-700">{loadError ?? "Results are not available yet."}</p>
         </PageShell>
       </>
     );
@@ -148,7 +171,7 @@ export default function ResultsPage() {
 
   return (
     <>
-      <AppHeader activeStep="results" />
+      <AppHeader activeStep="results" sessionId={params.id} unlockedSteps={gate.unlocked} />
       <PageShell>
         <PageHeader
           title="Simulation Complete"
@@ -415,8 +438,13 @@ export default function ResultsPage() {
         </div>
 
         <div className="mt-8 flex justify-center border-t border-[var(--card-border)] pt-6">
-          <SecondaryButton onClick={() => router.push("/")}>
-            Exit Simulation &amp; Return to Name Screen
+          <SecondaryButton
+            onClick={() => {
+              clearActiveSessionId();
+              router.replace("/");
+            }}
+          >
+            Finish &amp; Start a New Run
           </SecondaryButton>
         </div>
       </PageShell>

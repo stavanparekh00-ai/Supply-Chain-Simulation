@@ -18,6 +18,7 @@ import {
 import { PageShell, PageHeader, Card, MetricCard, PrimaryButton, NeutralAlert, Spinner } from "@/components/ui";
 import { AppHeader } from "@/components/AppHeader";
 import { SupplierOrderPanel, SupplierOrderInfo } from "@/components/SupplierOrderPanel";
+import { useSessionGate } from "@/hooks/useSessionGate";
 
 interface CustomerForecast {
   customerId: string;
@@ -96,6 +97,7 @@ const tooltipStyle = {
 export default function PlayPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
+  const gate = useSessionGate(params.id, "play");
   const [period, setPeriod] = useState<PeriodInfo | null>(null);
   const [orders, setOrders] = useState<OrderDraft>({});
   const [submitting, setSubmitting] = useState(false);
@@ -120,9 +122,10 @@ export default function PlayPage() {
   }, [params.id]);
 
   useEffect(() => {
+    if (!gate.ready) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadPeriod();
-  }, [loadPeriod]);
+  }, [gate.ready, loadPeriod]);
 
   function setOrder(facilityId: string, supplierId: string, value: string) {
     if (value.trim() === "") {
@@ -167,14 +170,25 @@ export default function PlayPage() {
 
   function handleContinue() {
     if (!feedback) return;
-    if (feedback.completed) router.push(`/session/${params.id}/results`);
-    else loadPeriod();
+    if (feedback.completed) router.replace(`/session/${params.id}/results`);
+    else void loadPeriod();
+  }
+
+  if (!gate.ready) {
+    return (
+      <>
+        <AppHeader activeStep="play" sessionId={params.id} unlockedSteps={gate.unlocked} />
+        <PageShell>
+          <Spinner />
+        </PageShell>
+      </>
+    );
   }
 
   if (error && !period) {
     return (
       <>
-        <AppHeader activeStep="play" />
+        <AppHeader activeStep="play" sessionId={params.id} unlockedSteps={gate.unlocked} />
         <PageShell>
           <p className="text-sm text-red-700">{error}</p>
         </PageShell>
@@ -184,7 +198,7 @@ export default function PlayPage() {
   if (!period) {
     return (
       <>
-        <AppHeader activeStep="play" />
+        <AppHeader activeStep="play" sessionId={params.id} unlockedSteps={gate.unlocked} />
         <PageShell>
           <Spinner />
         </PageShell>
@@ -214,7 +228,12 @@ export default function PlayPage() {
 
   return (
     <>
-      <AppHeader activeStep="play" weekProgress={{ current: period.week, total: period.horizonWeeks }} />
+      <AppHeader
+        activeStep="play"
+        sessionId={params.id}
+        unlockedSteps={gate.unlocked}
+        weekProgress={{ current: period.week, total: period.horizonWeeks }}
+      />
       <PageShell>
         <PageHeader title="Place Your Orders" subtitle={`Period ${period.week} of ${period.horizonWeeks}`} />
 

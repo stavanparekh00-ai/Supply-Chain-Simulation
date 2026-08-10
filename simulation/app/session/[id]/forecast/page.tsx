@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { PageShell, PageHeader, StepIndicator, Card, PrimaryButton, Spinner } from "@/components/ui";
 import { AppHeader } from "@/components/AppHeader";
+import { useSessionGate } from "@/hooks/useSessionGate";
 
 interface Customer {
   id: string;
@@ -25,10 +26,13 @@ interface ScenarioPublic {
 export default function ForecastSetupPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
+  const gate = useSessionGate(params.id, "forecast");
   const [scenario, setScenario] = useState<ScenarioPublic | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("all");
   const [submitting, setSubmitting] = useState(false);
+
+  const locked = Boolean(gate.session?.forecasting_method_id);
 
   useEffect(() => {
     fetch("/api/scenario")
@@ -38,6 +42,11 @@ export default function ForecastSetupPage() {
       });
   }, []);
 
+  useEffect(() => {
+    if (gate.session?.forecasting_method_id) {
+      setSelectedMethod(gate.session.forecasting_method_id);
+    }
+  }, [gate.session]);
   const chartData = useMemo(() => {
     if (!scenario) return [];
     return Array.from({ length: 8 }, (_, i) => {
@@ -57,37 +66,48 @@ export default function ForecastSetupPage() {
 
   async function handleBegin() {
     if (!selectedMethod) return;
+    if (locked) {
+      router.replace(`/session/${params.id}/play`);
+      return;
+    }
     setSubmitting(true);
-    await fetch(`/api/sessions/${params.id}/forecast-method`, {
+    const res = await fetch(`/api/sessions/${params.id}/forecast-method`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ methodId: selectedMethod }),
     });
-    router.push(`/session/${params.id}/play`);
+    if (!res.ok) {
+      setSubmitting(false);
+      return;
+    }
+    router.replace(`/session/${params.id}/play`);
   }
 
-  if (!scenario) {
+  if (!gate.ready || !scenario) {
     return (
       <>
-        <AppHeader activeStep="forecast" />
+        <AppHeader activeStep="forecast" sessionId={params.id} unlockedSteps={gate.unlocked} />
         <PageShell>
           <Spinner />
         </PageShell>
       </>
     );
   }
-
   const activeCustomer =
     selectedCustomerId === "all" ? null : scenario.customers.find((c) => c.id === selectedCustomerId);
 
   return (
     <>
-      <AppHeader activeStep="forecast" />
+      <AppHeader activeStep="forecast" sessionId={params.id} unlockedSteps={gate.unlocked} />
       <PageShell>
         <StepIndicator current={2} total={2} label="Forecasting Method" />
         <PageHeader
           title="Choose Your Forecasting Method"
-          subtitle="During play, each customer is forecasted independently and then summed at its assigned facility. Review the last 8 weeks of history below, then lock in a method."
+          subtitle={
+            locked
+              ? "Your forecasting method is locked for this run. Use the stage tabs above to move between stages you have already reached."
+              : "During play, each customer is forecasted independently and then summed at its assigned facility. Review the last 8 weeks of history below, then lock in a method."
+          }
         />
 
         <Card className="mb-6 overflow-hidden">
@@ -142,8 +162,12 @@ export default function ForecastSetupPage() {
             {scenario.forecasting_methods_menu.map((m) => (
               <button
                 key={m.id}
-                onClick={() => setSelectedMethod(m.id)}
-                className={`rounded-lg border px-4 py-3.5 text-left transition-all ${
+                type="button"
+                disabled={locked}
+                onClick={() => {
+                  if (!locked) setSelectedMethod(m.id);
+                }}
+                className={`rounded-lg border px-4 py-3.5 text-left transition-all disabled:cursor-default ${
                   selectedMethod === m.id
                     ? "border-[var(--navy)] bg-[var(--navy)]/[0.04] shadow-sm"
                     : "border-[var(--card-border)] hover:border-[var(--slate-light)] hover:bg-slate-50"
@@ -164,13 +188,15 @@ export default function ForecastSetupPage() {
             ))}
           </div>
           <p className="mt-5 text-xs text-[var(--slate-light)]">
-            Note: this method cannot be changed once the simulation begins.
+            {locked
+              ? "This method is locked. Use the stage tabs to return to Weekly Decisions or Network Design."
+              : "Note: this method cannot be changed once the simulation begins."}
           </p>
         </Card>
 
         <div className="mt-6 flex justify-end">
           <PrimaryButton onClick={handleBegin} disabled={!selectedMethod || submitting}>
-            {submitting ? "Starting..." : "Begin Simulation"}
+            {locked ? "Back to Weekly Decisions" : submitting ? "Starting..." : "Begin Simulation"}
           </PrimaryButton>
         </div>
       </PageShell>

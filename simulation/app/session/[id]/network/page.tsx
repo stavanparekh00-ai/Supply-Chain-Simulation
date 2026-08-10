@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useParams } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { PageShell, PageHeader, StepIndicator, Card, PrimaryButton, DataTable, Spinner, Badge } from "@/components/ui";
 import { AppHeader } from "@/components/AppHeader";
 import { NetworkMap } from "@/components/NetworkMap";
+import { useSessionGate } from "@/hooks/useSessionGate";
 
 interface CandidateFacility {
   id: string;
@@ -34,16 +34,33 @@ const MAX_OPEN_FACILITIES = 3;
 export default function NetworkSetupPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
+  const gate = useSessionGate(params.id, "network");
   const [scenario, setScenario] = useState<ScenarioPublic | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hydratedSelection, setHydratedSelection] = useState(false);
+
+  const locked = Boolean(
+    gate.session?.forecasting_method_id ||
+      gate.session?.status === "playing" ||
+      gate.session?.status === "completed"
+  );
 
   useEffect(() => {
     fetch("/api/scenario")
       .then((r) => r.json())
       .then(setScenario);
   }, []);
+
+  useEffect(() => {
+    if (!gate.ready || hydratedSelection) return;
+    const opened = gate.session?.opened_facilities;
+    if (Array.isArray(opened) && opened.length > 0) {
+      setSelected(new Set(opened));
+    }
+    setHydratedSelection(true);
+  }, [gate.ready, gate.session, hydratedSelection]);
 
   const totalFixedCost = useMemo(() => {
     if (!scenario) return 0;
@@ -53,6 +70,7 @@ export default function NetworkSetupPage() {
   }, [scenario, selected]);
 
   function toggle(facilityId: string) {
+    if (locked) return;
     setSelected((prev) => {
       if (prev.has(facilityId)) {
         const next = new Set(prev);
@@ -69,6 +87,7 @@ export default function NetworkSetupPage() {
   }
 
   function handleToggle(facilityId: string) {
+    if (locked) return;
     const alreadySelected = selected.has(facilityId);
     if (!alreadySelected && selected.size >= MAX_OPEN_FACILITIES) {
       setError(`You can open at most ${MAX_OPEN_FACILITIES} facilities.`);
@@ -79,6 +98,10 @@ export default function NetworkSetupPage() {
   }
 
   async function handleContinue() {
+    if (locked) {
+      router.replace(`/session/${params.id}/forecast`);
+      return;
+    }
     if (selected.size === 0 || selected.size > MAX_OPEN_FACILITIES) return;
     setSubmitting(true);
     setError(null);
@@ -93,13 +116,13 @@ export default function NetworkSetupPage() {
       setSubmitting(false);
       return;
     }
-    router.push(`/session/${params.id}/forecast`);
+    router.replace(`/session/${params.id}/forecast`);
   }
 
-  if (!scenario) {
+  if (!gate.ready || !scenario) {
     return (
       <>
-        <AppHeader activeStep="network" />
+        <AppHeader activeStep="network" sessionId={params.id} unlockedSteps={gate.unlocked} />
         <PageShell>
           <Spinner />
         </PageShell>
@@ -115,12 +138,16 @@ export default function NetworkSetupPage() {
 
   return (
     <>
-      <AppHeader activeStep="network" />
+      <AppHeader activeStep="network" sessionId={params.id} unlockedSteps={gate.unlocked} />
       <PageShell>
         <StepIndicator current={1} total={2} label="Facility Network Design" />
         <PageHeader
           title="Design Your Facility Network"
-          subtitle={`Select up to ${MAX_OPEN_FACILITIES} facilities to open (hard limit). Your choice affects fixed costs and how efficiently customer demand can be served.`}
+          subtitle={
+            locked
+              ? "Your facility network is locked for this run. Use the tabs above to move between stages you have already reached."
+              : `Select up to ${MAX_OPEN_FACILITIES} facilities to open (hard limit). Your choice affects fixed costs and how efficiently customer demand can be served.`
+          }
         />
 
         <Card className="mb-5 p-5">
@@ -128,8 +155,9 @@ export default function NetworkSetupPage() {
             <div>
               <h2 className="text-sm font-semibold text-[var(--navy)]">Network Map</h2>
               <p className="mt-1 text-xs text-[var(--slate)]">
-                Select facility markers to preview how customers would be assigned to their lowest-cost open facility.
-                Maximum {MAX_OPEN_FACILITIES} open facilities.
+                {locked
+                  ? "Read-only view of the facilities you opened and how customers assign to them."
+                  : `Select facility markers to preview how customers would be assigned to their lowest-cost open facility. Maximum ${MAX_OPEN_FACILITIES} open facilities.`}
               </p>
             </div>
             <Badge tone="navy">6 customers · max {MAX_OPEN_FACILITIES} of 5 hubs</Badge>
@@ -153,7 +181,8 @@ export default function NetworkSetupPage() {
                   <li key={f.id}>
                     <label
                       className={[
-                        "flex cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-colors",
+                        "flex items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-colors",
+                        locked ? "cursor-default" : "cursor-pointer",
                         isSelected
                           ? "border-[var(--navy)]/40 bg-[var(--navy)]/[0.04]"
                           : "border-[var(--card-border)] hover:bg-slate-50",
@@ -163,12 +192,14 @@ export default function NetworkSetupPage() {
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          disabled={!isSelected && selected.size >= MAX_OPEN_FACILITIES}
+                          disabled={locked || (!isSelected && selected.size >= MAX_OPEN_FACILITIES)}
                           onChange={() => handleToggle(f.id)}
                           className="h-4 w-4 accent-[var(--navy)] disabled:opacity-40"
                         />
                         <span>
-                          <span className="block text-sm font-medium text-[var(--foreground)]">{f.id} · {f.name}</span>
+                          <span className="block text-sm font-medium text-[var(--foreground)]">
+                            {f.id} · {f.name}
+                          </span>
                           <span className="block text-[11px] text-[var(--slate)]">{f.city}</span>
                         </span>
                       </span>
@@ -207,17 +238,22 @@ export default function NetworkSetupPage() {
               </span>
             </div>
             {error && <p className="text-xs text-red-700">{error}</p>}
-            {selected.size >= MAX_OPEN_FACILITIES && !error && (
+            {!locked && selected.size >= MAX_OPEN_FACILITIES && !error && (
               <p className="text-xs text-[var(--slate)]">
                 Maximum of {MAX_OPEN_FACILITIES} facilities reached. Deselect one to choose a different hub.
+              </p>
+            )}
+            {locked && (
+              <p className="text-xs text-[var(--slate)]">
+                Network changes are locked after forecasting begins. Use the stage tabs to navigate.
               </p>
             )}
           </div>
           <PrimaryButton
             onClick={handleContinue}
-            disabled={selected.size === 0 || selected.size > MAX_OPEN_FACILITIES || submitting}
+            disabled={!locked && (selected.size === 0 || selected.size > MAX_OPEN_FACILITIES || submitting)}
           >
-            {submitting ? "Saving..." : "Continue"}
+            {locked ? "Back to Forecasting" : submitting ? "Saving..." : "Continue"}
           </PrimaryButton>
         </div>
       </PageShell>

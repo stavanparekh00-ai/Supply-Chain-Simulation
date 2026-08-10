@@ -48,6 +48,11 @@ interface PeriodInfo {
   maxInventoryCeiling: number;
   disruptionsThisWeek: DisruptionEvent[];
   facilities: FacilityWeekInfo[];
+  lastCompletedWeek: number | null;
+  lastOutcomes: Record<
+    string,
+    { actualDemand: number; fillRatePct: number; served: number; forecast: number }
+  >;
   charts: {
     cumulativeCostByWeek: { week: number; cost: number }[];
     demandVsForecast: { week: number; demand: number; forecast: number }[];
@@ -61,27 +66,8 @@ interface PeriodInfo {
     cumulativeCostByWeek: { week: number; cost: number }[];
   };
 }
-interface FacilityFeedback {
-  facilityId: string;
-  actualDemand: number;
-  onHandStart: number;
-  backlogStart: number;
-  arriving: number;
-  arrivingOrdered?: number;
-  arrivingShortfall?: number;
-  arrivalShortfall?: number;
-  newServed: number;
-  onHandEnd: number;
-  backlogEnd: number;
-  procurementCost: number;
-  holdingCost: number;
-  backorderCost: number;
-  totalCost: number;
-  maxInventoryCeiling?: number;
-}
 interface PeriodFeedback {
   week: number;
-  results: FacilityFeedback[];
   completed: boolean;
 }
 
@@ -94,11 +80,6 @@ const tooltipStyle = {
   boxShadow: "0 4px 12px rgba(15,23,42,0.08)",
 };
 
-function facilityFillRatePct(result: FacilityFeedback): number {
-  if (result.actualDemand <= 0) return 100;
-  return (result.newServed / result.actualDemand) * 100;
-}
-
 export default function PlayPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
@@ -107,7 +88,6 @@ export default function PlayPage() {
   const [orders, setOrders] = useState<OrderDraft>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<PeriodFeedback | null>(null);
 
   const loadPeriod = useCallback(async () => {
     const res = await fetch(`/api/sessions/${params.id}/period`);
@@ -116,8 +96,11 @@ export default function PlayPage() {
       return;
     }
     const data: PeriodInfo = await res.json();
-    setPeriod(data);
-    setFeedback(null);
+    setPeriod({
+      ...data,
+      lastCompletedWeek: data.lastCompletedWeek ?? null,
+      lastOutcomes: data.lastOutcomes ?? {},
+    });
     const initial: OrderDraft = {};
     for (const f of data.facilities) {
       initial[f.facilityId] = {};
@@ -169,14 +152,12 @@ export default function PlayPage() {
       return;
     }
     const result: PeriodFeedback = await res.json();
+    if (result.completed) {
+      router.replace(`/session/${params.id}/results`);
+      return;
+    }
+    await loadPeriod();
     setSubmitting(false);
-    setFeedback(result);
-  }
-
-  function handleContinue() {
-    if (!feedback) return;
-    if (feedback.completed) router.replace(`/session/${params.id}/results`);
-    else void loadPeriod();
   }
 
   if (!gate.ready) {
@@ -301,11 +282,10 @@ export default function PlayPage() {
 
         <div className="space-y-6">
           {period.facilities.map((f) => {
-            const result = feedback?.results.find((r) => r.facilityId === f.facilityId);
-            const fillRate = result ? facilityFillRatePct(result) : null;
-            const demandDelta = result ? result.actualDemand - f.forecast : null;
-            const shortfall = result ? result.arrivingShortfall || result.arrivalShortfall || 0 : 0;
-            const outcomeWeek = feedback?.week ?? period.week;
+            const last = period.lastOutcomes?.[f.facilityId];
+            const outcomeWeek = period.lastCompletedWeek;
+            const demandDelta =
+              last && outcomeWeek !== null ? last.actualDemand - last.forecast : null;
 
             return (
               <Card key={f.facilityId} className="p-5">
@@ -323,41 +303,29 @@ export default function PlayPage() {
                 </div>
 
                 <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                  <MetricCard
-                    label={result ? "Ending Inventory" : "On-Hand Inventory"}
-                    value={(result ? result.onHandEnd : f.onHandStart).toLocaleString()}
-                  />
-                  <MetricCard
-                    label="Backlog"
-                    value={(result ? result.backlogEnd : f.backlogStart).toLocaleString()}
-                    accent={(result ? result.backlogEnd : f.backlogStart) > 0}
-                  />
                   <MetricCard label="Facility Forecast" value={f.forecast.toLocaleString()} />
-                  <MetricCard
-                    label={result ? "Arrived This Week" : "Arriving This Week"}
-                    value={(result ? result.arriving : f.arrivingThisWeek).toLocaleString()}
-                    sublabel={
-                      result && shortfall > 0 ? `Shortfall ${shortfall.toLocaleString()}` : undefined
-                    }
-                  />
-                  <MetricCard
-                    label={`Actual Demand · Week ${outcomeWeek}`}
-                    value={result ? result.actualDemand.toLocaleString() : "—"}
-                    sublabel={
-                      result && demandDelta !== null
-                        ? `${demandDelta >= 0 ? "+" : ""}${demandDelta.toLocaleString()} vs forecast`
-                        : "Revealed after submit"
-                    }
-                    accent={Boolean(result)}
-                  />
+                  <MetricCard label="On-Hand Inventory" value={f.onHandStart.toLocaleString()} />
                   <MetricCard
                     label="Fill Rate"
-                    value={fillRate === null ? "—" : `${fillRate.toFixed(1)}%`}
+                    value={last ? `${last.fillRatePct.toFixed(1)}%` : "—"}
                     sublabel={
-                      result ? `Served ${result.newServed.toLocaleString()}` : "Revealed after submit"
+                      last && outcomeWeek !== null
+                        ? `Week ${outcomeWeek} · served ${last.served.toLocaleString()}`
+                        : "After first submit"
                     }
-                    accent={fillRate !== null && fillRate < 100}
+                    highlight
                   />
+                  <MetricCard
+                    label={outcomeWeek !== null ? `Actual Demand · Week ${outcomeWeek}` : "Actual Demand"}
+                    value={last ? last.actualDemand.toLocaleString() : "—"}
+                    sublabel={
+                      demandDelta !== null
+                        ? `${demandDelta >= 0 ? "+" : ""}${demandDelta.toLocaleString()} vs forecast`
+                        : "After first submit"
+                    }
+                  />
+                  <MetricCard label="Backlog" value={f.backlogStart.toLocaleString()} accent={f.backlogStart > 0} />
+                  <MetricCard label="Arriving This Week" value={f.arrivingThisWeek.toLocaleString()} />
                 </div>
 
                 {f.customerForecasts.length > 0 && (
@@ -378,7 +346,6 @@ export default function PlayPage() {
                   suppliers={f.suppliers}
                   quantities={orders[f.facilityId] ?? {}}
                   onChange={(supplierId, value) => setOrder(f.facilityId, supplierId, value)}
-                  readOnly={Boolean(feedback)}
                 />
               </Card>
             );
@@ -386,7 +353,7 @@ export default function PlayPage() {
         </div>
 
         <div className="mt-6 flex flex-col items-end gap-3">
-          {!feedback && hardIssues.length > 0 && (
+          {hardIssues.length > 0 && (
             <div className="w-full rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">
               <div className="font-semibold">Fix capacity issues before submitting</div>
               <ul className="mt-1 list-disc pl-4">
@@ -396,15 +363,13 @@ export default function PlayPage() {
               </ul>
             </div>
           )}
-          {!feedback ? (
-            <PrimaryButton onClick={handleSubmit} disabled={submitting || hardIssues.length > 0}>
-              {submitting ? "Submitting..." : "Submit Orders & Reveal Actual Demand"}
-            </PrimaryButton>
-          ) : (
-            <PrimaryButton onClick={handleContinue}>
-              {feedback.completed ? "View Final Results" : "Continue to Next Period"}
-            </PrimaryButton>
-          )}
+          <PrimaryButton onClick={handleSubmit} disabled={submitting || hardIssues.length > 0}>
+            {submitting
+              ? "Submitting..."
+              : period.week >= period.horizonWeeks
+                ? "Submit Final Week"
+                : "Submit Orders"}
+          </PrimaryButton>
         </div>
       </PageShell>
     </>

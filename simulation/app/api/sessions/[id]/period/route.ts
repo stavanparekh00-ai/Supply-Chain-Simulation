@@ -87,6 +87,43 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const latestStates = stateRes.rows.filter((r) => Number(r.week) === week - 1);
   const currentWeekForecast = facilities.reduce((sum, f) => sum + f.forecast, 0);
 
+  // Most recently completed week outcomes (for facility KPI slots on the orders page).
+  const lastCompletedWeek = week > 1 ? week - 1 : null;
+  const lastOutcomes: Record<
+    string,
+    { actualDemand: number; fillRatePct: number; served: number; forecast: number }
+  > = {};
+  if (lastCompletedWeek !== null) {
+    const lastRows = stateRes.rows.filter((r) => Number(r.week) === lastCompletedWeek);
+    const backlogBeforeLast = new Map<string, number>();
+    for (const row of stateRes.rows) {
+      if (Number(row.week) >= lastCompletedWeek) break;
+      backlogBeforeLast.set(String(row.facility_id), Number(row.backlog));
+    }
+    for (const row of lastRows) {
+      const facilityId = String(row.facility_id);
+      const actualDemand = Number(row.actual_demand);
+      const backlogStart = backlogBeforeLast.get(facilityId) ?? 0;
+      const available = Number(row.on_hand_start) + Number(row.arriving);
+      const oldBacklogRemaining = Math.max(0, backlogStart - available);
+      const newlyUnfilled = Math.max(0, Number(row.backlog) - oldBacklogRemaining);
+      const served = Math.max(0, actualDemand - newlyUnfilled);
+      const forecast = forecastFacilityDemand(
+        data,
+        openedFacilities,
+        facilityId,
+        lastCompletedWeek,
+        methodId
+      ).forecast;
+      lastOutcomes[facilityId] = {
+        actualDemand,
+        served,
+        forecast,
+        fillRatePct: actualDemand > 0 ? (served / actualDemand) * 100 : 100,
+      };
+    }
+  }
+
   return NextResponse.json({
     week,
     horizonWeeks: data.scenario_metadata.horizon_periods,
@@ -94,6 +131,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     maxInventoryCeiling: data.per_period_cost_parameters.max_inventory_ceiling_units,
     disruptionsThisWeek,
     facilities,
+    lastCompletedWeek,
+    lastOutcomes,
     charts: {
       cumulativeCostByWeek,
       demandVsForecast,

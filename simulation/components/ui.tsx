@@ -78,17 +78,48 @@ export function MetricCard({
   value,
   sublabel,
   accent = false,
+  highlight = false,
 }: {
   label: string;
   value: string | number;
   sublabel?: string;
   accent?: boolean;
+  highlight?: boolean;
 }) {
   return (
-    <Card className={`p-4 ${accent ? "border-[var(--navy)]/25 bg-[var(--navy)]/[0.03]" : ""}`}>
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--slate)]">{label}</div>
-      <div className="mt-1.5 text-[1.6rem] font-semibold tabular-nums leading-none text-[var(--navy)]">{value}</div>
-      {sublabel && <div className="mt-1.5 text-xs text-[var(--slate-light)]">{sublabel}</div>}
+    <Card
+      className={[
+        "p-4",
+        highlight
+          ? "border-[var(--navy)] bg-[var(--navy)] text-white shadow-sm"
+          : accent
+            ? "border-[var(--navy)]/25 bg-[var(--navy)]/[0.03]"
+            : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <div
+        className={[
+          "text-[11px] font-semibold uppercase tracking-wider",
+          highlight ? "text-white/75" : "text-[var(--slate)]",
+        ].join(" ")}
+      >
+        {label}
+      </div>
+      <div
+        className={[
+          "mt-1.5 text-[1.6rem] font-semibold tabular-nums leading-none",
+          highlight ? "text-white" : "text-[var(--navy)]",
+        ].join(" ")}
+      >
+        {value}
+      </div>
+      {sublabel && (
+        <div className={["mt-1.5 text-xs", highlight ? "text-white/70" : "text-[var(--slate-light)]"].join(" ")}>
+          {sublabel}
+        </div>
+      )}
     </Card>
   );
 }

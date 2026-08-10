@@ -100,26 +100,26 @@
       "map_y": 78,
       "weekly_demand": 300,
       "historical_demand_last_8_weeks": [
-        380,
-        455,
-        443,
-        275,
-        226,
-        304,
-        296,
-        465
+        91,
+        126,
+        145,
+        213,
+        199,
+        113,
+        231,
+        488
       ],
       "actual_demand_ground_truth_by_week": [
-        177,
-        115,
-        281,
-        198,
-        204,
-        243,
-        317,
-        461,
-        121,
-        373
+        217,
+        188,
+        412,
+        120,
+        272,
+        128,
+        469,
+        324,
+        86,
+        279
       ]
     },
     {
@@ -130,26 +130,26 @@
       "map_y": 340,
       "weekly_demand": 450,
       "historical_demand_last_8_weeks": [
-        683,
-        615,
-        736,
-        401,
-        300,
-        702,
-        186,
-        718
+        633,
+        557,
+        296,
+        286,
+        407,
+        304,
+        625,
+        170
       ],
       "actual_demand_ground_truth_by_week": [
-        525,
-        364,
+        775,
+        769,
         765,
-        186,
-        455,
-        553,
+        551,
+        427,
+        635,
         742,
-        439,
-        264,
-        496
+        684,
+        285,
+        171
       ]
     },
     {
@@ -160,26 +160,26 @@
       "map_y": 375,
       "weekly_demand": 250,
       "historical_demand_last_8_weeks": [
-        419,
-        87,
-        294,
-        295,
-        162,
-        383,
-        87,
-        108
+        424,
+        437,
+        344,
+        278,
+        203,
+        411,
+        108,
+        338
       ],
       "actual_demand_ground_truth_by_week": [
-        292,
-        401,
-        213,
-        174,
-        299,
-        187,
-        283,
-        294,
-        364,
-        66
+        264,
+        352,
+        81,
+        87,
+        337,
+        267,
+        250,
+        400,
+        357,
+        114
       ]
     },
     {
@@ -190,26 +190,26 @@
       "map_y": 495,
       "weekly_demand": 350,
       "historical_demand_last_8_weeks": [
-        140,
-        109,
-        468,
-        522,
-        577,
-        93,
-        607,
-        272
+        423,
+        121,
+        179,
+        239,
+        455,
+        180,
+        456,
+        200
       ],
       "actual_demand_ground_truth_by_week": [
-        558,
-        328,
-        210,
-        88,
-        403,
-        519,
-        125,
-        456,
-        522,
-        439
+        268,
+        438,
+        462,
+        510,
+        496,
+        563,
+        241,
+        572,
+        356,
+        146
       ]
     },
     {
@@ -220,26 +220,26 @@
       "map_y": 195,
       "weekly_demand": 280,
       "historical_demand_last_8_weeks": [
-        439,
-        197,
-        162,
-        284,
-        171,
-        120,
-        133,
-        436
+        252,
+        371,
+        90,
+        184,
+        99,
+        187,
+        195,
+        471
       ],
       "actual_demand_ground_truth_by_week": [
-        144,
-        480,
-        240,
-        338,
-        399,
-        331,
-        373,
-        238,
-        112,
-        356
+        239,
+        301,
+        468,
+        344,
+        346,
+        192,
+        215,
+        115,
+        184,
+        341
       ]
     },
     {
@@ -250,100 +250,103 @@
       "map_y": 195,
       "weekly_demand": 400,
       "historical_demand_last_8_weeks": [
-        306,
-        385,
-        186,
-        690,
+        674,
+        239,
+        203,
+        644,
+        695,
+        337,
         318,
-        197,
-        418,
-        237
+        619
       ],
       "actual_demand_ground_truth_by_week": [
-        177,
-        181,
+        657,
+        631,
         680,
-        299,
-        297,
-        299,
+        421,
+        319,
+        226,
         660,
-        526,
-        218,
-        673
+        660,
+        260,
+        352
       ]
     }
   ],
+  "transport_cost_methodology": {
+    "description": "Per-unit transport costs are stylized whole dollars derived from great-circle miles between facility and customer cities (roughly $8 base + $0.018/mile, rounded). Longer lanes cost more; nearby hubs are cheapest. Example: Phoenix→Detroit (F2→C5) is far more expensive than Atlanta→Detroit (F4→C5) or Chicago→Detroit (F5→C5)."
+  },
   "transport_cost_matrix": {
     "F1": {
-      "C1": 2,
+      "C1": 4,
       "C2": 3,
-      "C3": 13,
-      "C4": 14,
-      "C5": 13,
-      "C6": 14
+      "C3": 9,
+      "C4": 15,
+      "C5": 12,
+      "C6": 15
     },
     "F2": {
-      "C1": 4,
+      "C1": 7,
       "C2": 2,
-      "C3": 12,
-      "C4": 13,
-      "C5": 12,
+      "C3": 6,
+      "C4": 12,
+      "C5": 11,
       "C6": 13
     },
     "F3": {
-      "C1": 13,
-      "C2": 12,
-      "C3": 2,
-      "C4": 12,
-      "C5": 3,
-      "C6": 13
+      "C1": 8,
+      "C2": 5,
+      "C3": 4,
+      "C4": 11,
+      "C5": 7,
+      "C6": 10
     },
     "F4": {
       "C1": 14,
-      "C2": 13,
-      "C3": 12,
-      "C4": 2,
-      "C5": 12,
-      "C6": 3
+      "C2": 12,
+      "C3": 4,
+      "C4": 4,
+      "C5": 4,
+      "C6": 5
     },
     "F5": {
-      "C1": 12,
-      "C2": 13,
-      "C3": 12,
-      "C4": 6,
-      "C5": 4,
+      "C1": 11,
+      "C2": 11,
+      "C3": 5,
+      "C4": 7,
+      "C5": 2,
       "C6": 4
     }
   },
   "network_design_reference_solution": {
-    "description": "Brute-force-verified optimal answer for Stage 0 (Network Design), used as ground truth to validate the Oracle's network design output before trusting it.",
+    "description": "Brute-force-verified optimal answer for Stage 0 (Network Design) under a max-3 open-facility rule, using geographically consistent transport costs.",
     "opened_facilities": [
       "F1",
-      "F3",
-      "F4"
+      "F5"
     ],
     "closed_facilities": [
       "F2",
-      "F5"
+      "F3",
+      "F4"
     ],
     "customer_assignment": {
       "C1": "F1",
       "C2": "F1",
-      "C3": "F3",
-      "C4": "F4",
-      "C5": "F3",
-      "C6": "F4"
+      "C3": "F5",
+      "C4": "F5",
+      "C5": "F5",
+      "C6": "F5"
     },
-    "total_cost": 20190,
-    "fixed_cost_component": 15000,
-    "transport_cost_component": 5190,
+    "total_cost": 18910,
+    "fixed_cost_component": 10500,
+    "transport_cost_component": 8410,
     "runner_up": {
       "opened_facilities": [
         "F1",
-        "F5"
+        "F4"
       ],
-      "total_cost": 20270,
-      "note": "Closest alternative under a max-3 open-facility rule."
+      "total_cost": 19070,
+      "note": "Closest alternative under the max-3 open-facility rule."
     }
   },
   "per_period_cost_parameters": {

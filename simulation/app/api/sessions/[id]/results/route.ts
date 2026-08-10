@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
+import { loadScenarioData } from "@/lib/scenarioData";
+import { ForecastingMethodId } from "@/lib/forecasting";
+import { scoreForecastAccuracy } from "@/lib/forecastAccuracy";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -37,6 +40,43 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
      ) completed_runs`
   );
   const communityRow = communityRes.rows[0];
+
+  const data = loadScenarioData();
+  const openedFacilities: string[] = session.opened_facilities ?? [];
+  const methodId = session.forecasting_method_id as ForecastingMethodId;
+  const forecastAccuracy = scoreForecastAccuracy(data, openedFacilities, methodId, periodStateRes.rows);
+
+  // Average MAE/MSE across other completed players who used the same forecasting method.
+  const sameMethodSessions = await pool.query(
+    `SELECT id, opened_facilities, forecasting_method_id
+     FROM sessions
+     WHERE status = 'completed'
+       AND forecasting_method_id = $1`,
+    [methodId]
+  );
+  const peerMaes: number[] = [];
+  const peerMses: number[] = [];
+  for (const peer of sameMethodSessions.rows) {
+    const peerState = await pool.query(
+      `SELECT week, facility_id, actual_demand
+       FROM period_state
+       WHERE session_id = $1
+       ORDER BY week ASC, facility_id ASC`,
+      [peer.id]
+    );
+    if (peerState.rows.length === 0) continue;
+    const scored = scoreForecastAccuracy(
+      data,
+      peer.opened_facilities ?? [],
+      peer.forecasting_method_id as ForecastingMethodId,
+      peerState.rows
+    );
+    peerMaes.push(scored.mae);
+    peerMses.push(scored.mse);
+  }
+  const peerCount = peerMaes.length;
+  const peerAverageMae = peerCount === 0 ? null : peerMaes.reduce((a, b) => a + b, 0) / peerCount;
+  const peerAverageMse = peerCount === 0 ? null : peerMses.reduce((a, b) => a + b, 0) / peerCount;
 
   let playerCumulativeCost = 0;
   const placeholderSolverCumulative = Array.from(
@@ -76,6 +116,22 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       completedPlayers: Number(communityRow.completed_players ?? 0),
       averageCost:
         communityRow.average_cost === null ? null : Number(communityRow.average_cost),
+    },
+    forecastAccuracy: {
+      methodId: forecastAccuracy.methodId,
+      methodName: forecastAccuracy.methodName,
+      observations: forecastAccuracy.observations,
+      mae: forecastAccuracy.mae,
+      mse: forecastAccuracy.mse,
+      rmse: forecastAccuracy.rmse,
+      mapePct: forecastAccuracy.mapePct,
+      bias: forecastAccuracy.bias,
+      byWeek: forecastAccuracy.byWeek,
+      peers: {
+        completedWithSameMethod: peerCount,
+        averageMae: peerAverageMae,
+        averageMse: peerAverageMse,
+      },
     },
     solverBenchmark: {
       status: "illustrative_placeholder",

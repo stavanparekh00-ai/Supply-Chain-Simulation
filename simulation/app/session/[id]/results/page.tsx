@@ -47,6 +47,22 @@ interface ResultsResponse {
     completedPlayers: number;
     averageCost: number | null;
   };
+  forecastAccuracy: {
+    methodId: string;
+    methodName: string;
+    observations: number;
+    mae: number;
+    mse: number;
+    rmse: number;
+    mapePct: number | null;
+    bias: number;
+    byWeek: { week: number; forecast: number; actual: number; absError: number }[];
+    peers: {
+      completedWithSameMethod: number;
+      averageMae: number | null;
+      averageMse: number | null;
+    };
+  };
   solverBenchmark: {
     status: "illustrative_placeholder";
     notice: string;
@@ -195,6 +211,105 @@ export default function ResultsPage() {
               )}
             </div>
           </div>
+        </Card>
+
+        <Card className="mb-8 overflow-hidden">
+          <div className="border-b border-[var(--card-border)] bg-slate-50 px-5 py-4">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--slate)]">
+              Forecast accuracy · {data.forecastAccuracy.methodName}
+            </div>
+            <p className="mt-1 text-sm text-[var(--slate)]">
+              Error between your method&apos;s facility forecast and revealed demand across{" "}
+              {data.forecastAccuracy.observations.toLocaleString()} facility-weeks.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-0 sm:grid-cols-4">
+            <div className="border-b border-[var(--card-border)] px-5 py-4 sm:border-b-0 sm:border-r">
+              <div className="text-xs text-[var(--slate)]">MAE (avg |error|)</div>
+              <div className="mt-1 text-2xl font-semibold tabular-nums text-[var(--navy)]">
+                {Math.round(data.forecastAccuracy.mae).toLocaleString()}
+              </div>
+            </div>
+            <div className="border-b border-[var(--card-border)] px-5 py-4 sm:border-b-0 sm:border-r">
+              <div className="text-xs text-[var(--slate)]">MSE</div>
+              <div className="mt-1 text-2xl font-semibold tabular-nums text-[var(--navy)]">
+                {Math.round(data.forecastAccuracy.mse).toLocaleString()}
+              </div>
+            </div>
+            <div className="border-b border-r border-[var(--card-border)] px-5 py-4 sm:border-b-0">
+              <div className="text-xs text-[var(--slate)]">RMSE</div>
+              <div className="mt-1 text-2xl font-semibold tabular-nums text-[var(--navy)]">
+                {Math.round(data.forecastAccuracy.rmse).toLocaleString()}
+              </div>
+            </div>
+            <div className="border-b border-[var(--card-border)] px-5 py-4 sm:border-b-0">
+              <div className="text-xs text-[var(--slate)]">MAPE</div>
+              <div className="mt-1 text-2xl font-semibold tabular-nums text-[var(--navy)]">
+                {data.forecastAccuracy.mapePct === null
+                  ? "—"
+                  : `${data.forecastAccuracy.mapePct.toFixed(1)}%`}
+              </div>
+            </div>
+          </div>
+          <div className="grid gap-0 border-t border-[var(--card-border)] sm:grid-cols-2">
+            <div className="px-5 py-4">
+              <div className="text-xs text-[var(--slate)]">Bias (avg forecast − actual)</div>
+              <div className="mt-1 text-lg font-semibold tabular-nums text-[var(--navy)]">
+                {data.forecastAccuracy.bias >= 0 ? "+" : ""}
+                {Math.round(data.forecastAccuracy.bias).toLocaleString()}
+              </div>
+              <div className="mt-1 text-[11px] text-[var(--slate-light)]">
+                Positive means you tended to over-forecast.
+              </div>
+            </div>
+            <div className="border-t border-[var(--card-border)] px-5 py-4 sm:border-t-0 sm:border-l">
+              <div className="text-xs text-[var(--slate)]">
+                Same-method player average MAE
+                {data.forecastAccuracy.peers.completedWithSameMethod > 0
+                  ? ` (${data.forecastAccuracy.peers.completedWithSameMethod})`
+                  : ""}
+              </div>
+              <div className="mt-1 text-lg font-semibold tabular-nums text-[var(--navy)]">
+                {data.forecastAccuracy.peers.averageMae === null
+                  ? "—"
+                  : Math.round(data.forecastAccuracy.peers.averageMae).toLocaleString()}
+              </div>
+              <div className="mt-1 text-[11px] text-[var(--slate-light)]">
+                {data.forecastAccuracy.peers.averageMae === null
+                  ? "No completed peers used this method yet."
+                  : data.forecastAccuracy.mae <= data.forecastAccuracy.peers.averageMae
+                    ? "Your MAE is at or below the same-method average."
+                    : "Your MAE is above the same-method average."}
+              </div>
+            </div>
+          </div>
+          {data.forecastAccuracy.byWeek.length > 0 && (
+            <div className="border-t border-[var(--card-border)] px-5 py-4">
+              <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--slate)]">
+                Weekly forecast vs actual (network total)
+              </div>
+              <div style={{ width: "100%", height: 220 }}>
+                <ResponsiveContainer>
+                  <BarChart
+                    data={data.forecastAccuracy.byWeek.map((row) => ({
+                      week: `Wk ${row.week}`,
+                      Forecast: row.forecast,
+                      Actual: row.actual,
+                    }))}
+                    margin={{ top: 5, right: 10, left: -15, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e8ee" vertical={false} />
+                    <XAxis dataKey="week" tick={chartAxisStyle} axisLine={{ stroke: "#e5e8ee" }} tickLine={false} />
+                    <YAxis tick={chartAxisStyle} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="Forecast" fill="#1e3a5f" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="Actual" fill="#d6b37a" radius={[3, 3, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
         </Card>
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">

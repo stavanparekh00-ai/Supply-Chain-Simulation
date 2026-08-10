@@ -7,12 +7,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const body = await req.json();
   const openedFacilities: string[] = body.openedFacilities;
 
+  const MAX_OPEN_FACILITIES = 3;
+
   if (!Array.isArray(openedFacilities) || openedFacilities.length === 0) {
     return NextResponse.json({ error: "openedFacilities must be a non-empty array" }, { status: 400 });
+  }
+  if (openedFacilities.length > MAX_OPEN_FACILITIES) {
+    return NextResponse.json(
+      { error: `You can open at most ${MAX_OPEN_FACILITIES} facilities (got ${openedFacilities.length}).` },
+      { status: 400 }
+    );
   }
 
   const data = loadScenarioData();
   const validIds = new Set(data.candidate_facilities.map((f) => f.id));
+  const unique = new Set(openedFacilities);
+  if (unique.size !== openedFacilities.length) {
+    return NextResponse.json({ error: "Duplicate facility ids are not allowed" }, { status: 400 });
+  }
   for (const f of openedFacilities) {
     if (!validIds.has(f)) {
       return NextResponse.json({ error: `Invalid facility id: ${f}` }, { status: 400 });

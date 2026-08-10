@@ -29,12 +29,15 @@ interface ScenarioPublic {
   transport_cost_matrix: Record<string, Record<string, number>>;
 }
 
+const MAX_OPEN_FACILITIES = 3;
+
 export default function NetworkSetupPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const [scenario, setScenario] = useState<ScenarioPublic | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/scenario")
@@ -51,21 +54,45 @@ export default function NetworkSetupPage() {
 
   function toggle(facilityId: string) {
     setSelected((prev) => {
+      if (prev.has(facilityId)) {
+        const next = new Set(prev);
+        next.delete(facilityId);
+        return next;
+      }
+      if (prev.size >= MAX_OPEN_FACILITIES) {
+        return prev;
+      }
       const next = new Set(prev);
-      if (next.has(facilityId)) next.delete(facilityId);
-      else next.add(facilityId);
+      next.add(facilityId);
       return next;
     });
   }
 
+  function handleToggle(facilityId: string) {
+    const alreadySelected = selected.has(facilityId);
+    if (!alreadySelected && selected.size >= MAX_OPEN_FACILITIES) {
+      setError(`You can open at most ${MAX_OPEN_FACILITIES} facilities.`);
+      return;
+    }
+    setError(null);
+    toggle(facilityId);
+  }
+
   async function handleContinue() {
-    if (selected.size === 0) return;
+    if (selected.size === 0 || selected.size > MAX_OPEN_FACILITIES) return;
     setSubmitting(true);
-    await fetch(`/api/sessions/${params.id}/network`, {
+    setError(null);
+    const res = await fetch(`/api/sessions/${params.id}/network`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ openedFacilities: Array.from(selected) }),
     });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setError(body.error || "Could not save your network.");
+      setSubmitting(false);
+      return;
+    }
     router.push(`/session/${params.id}/forecast`);
   }
 
@@ -93,7 +120,7 @@ export default function NetworkSetupPage() {
         <StepIndicator current={1} total={2} label="Facility Network Design" />
         <PageHeader
           title="Design Your Facility Network"
-          subtitle="Select which candidate facilities to open. Your choice affects fixed costs and how efficiently customer demand can be served."
+          subtitle={`Select up to ${MAX_OPEN_FACILITIES} facilities to open (hard limit). Your choice affects fixed costs and how efficiently customer demand can be served.`}
         />
 
         <Card className="mb-5 p-5">
@@ -102,16 +129,17 @@ export default function NetworkSetupPage() {
               <h2 className="text-sm font-semibold text-[var(--navy)]">Network Map</h2>
               <p className="mt-1 text-xs text-[var(--slate)]">
                 Select facility markers to preview how customers would be assigned to their lowest-cost open facility.
+                Maximum {MAX_OPEN_FACILITIES} open facilities.
               </p>
             </div>
-            <Badge tone="navy">6 customers · 5 candidates</Badge>
+            <Badge tone="navy">6 customers · max {MAX_OPEN_FACILITIES} of 5 hubs</Badge>
           </div>
           <NetworkMap
             facilities={scenario.candidate_facilities}
             customers={scenario.customers}
             transportCosts={scenario.transport_cost_matrix}
             selected={selected}
-            onToggle={toggle}
+            onToggle={handleToggle}
           />
         </Card>
 
@@ -135,8 +163,9 @@ export default function NetworkSetupPage() {
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          onChange={() => toggle(f.id)}
-                          className="h-4 w-4 accent-[var(--navy)]"
+                          disabled={!isSelected && selected.size >= MAX_OPEN_FACILITIES}
+                          onChange={() => handleToggle(f.id)}
+                          className="h-4 w-4 accent-[var(--navy)] disabled:opacity-40"
                         />
                         <span>
                           <span className="block text-sm font-medium text-[var(--foreground)]">{f.id} · {f.name}</span>
@@ -167,13 +196,27 @@ export default function NetworkSetupPage() {
         </div>
 
         <div className="mt-6 flex flex-col-reverse items-start justify-between gap-4 sm:flex-row sm:items-center">
-          <div className="flex items-center gap-3 text-sm text-[var(--foreground)]">
-            <Badge tone="navy">{selected.size} facilities selected</Badge>
-            <span className="text-[var(--slate)]">
-              Total Fixed Cost: <span className="font-semibold text-[var(--navy)]">${totalFixedCost.toLocaleString()}</span>
-            </span>
+          <div className="flex flex-col gap-2 text-sm text-[var(--foreground)]">
+            <div className="flex flex-wrap items-center gap-3">
+              <Badge tone="navy">
+                {selected.size} / {MAX_OPEN_FACILITIES} facilities selected
+              </Badge>
+              <span className="text-[var(--slate)]">
+                Total Fixed Cost:{" "}
+                <span className="font-semibold text-[var(--navy)]">${totalFixedCost.toLocaleString()}</span>
+              </span>
+            </div>
+            {error && <p className="text-xs text-red-700">{error}</p>}
+            {selected.size >= MAX_OPEN_FACILITIES && !error && (
+              <p className="text-xs text-[var(--slate)]">
+                Maximum of {MAX_OPEN_FACILITIES} facilities reached. Deselect one to choose a different hub.
+              </p>
+            )}
           </div>
-          <PrimaryButton onClick={handleContinue} disabled={selected.size === 0 || submitting}>
+          <PrimaryButton
+            onClick={handleContinue}
+            disabled={selected.size === 0 || selected.size > MAX_OPEN_FACILITIES || submitting}
+          >
             {submitting ? "Saving..." : "Continue"}
           </PrimaryButton>
         </div>

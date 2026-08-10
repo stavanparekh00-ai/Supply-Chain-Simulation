@@ -126,12 +126,17 @@ export default function WelcomePage() {
           </div>
 
           <div className="mt-8 border-t border-[var(--card-border)] pt-6">
-            <label className="block">
-              <span className="text-xs font-semibold uppercase tracking-wider text-[var(--slate)]">
+            <div>
+              <label
+                htmlFor="participant-name"
+                className="text-xs font-semibold uppercase tracking-wider text-[var(--slate)]"
+              >
                 Participant name
-              </span>
+              </label>
               <input
+                id="participant-name"
                 type="text"
+                name="participant-name"
                 value={participantName}
                 onChange={(event) => setParticipantName(event.target.value)}
                 onKeyDown={(event) => {
@@ -139,13 +144,15 @@ export default function WelcomePage() {
                 }}
                 maxLength={60}
                 autoComplete="name"
+                autoCorrect="off"
+                spellCheck={false}
                 placeholder="Enter your name"
                 className="mt-2 w-full rounded-lg border border-[var(--card-border)] bg-white px-3.5 py-2.5 text-sm text-[var(--foreground)] shadow-sm transition-colors placeholder:text-[var(--slate-light)] focus:border-[var(--navy)]"
               />
-              <span className="mt-1.5 block text-[11px] text-[var(--slate-light)]">
+              <p className="mt-1.5 text-[11px] text-[var(--slate-light)]">
                 No password required. Your name is used only to identify this simulation run.
-              </span>
-            </label>
+              </p>
+            </div>
             {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
 
             <div className="mt-5 flex justify-center">

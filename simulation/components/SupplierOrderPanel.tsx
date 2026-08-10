@@ -26,10 +26,12 @@ export function SupplierOrderPanel({
   suppliers,
   quantities,
   onChange,
+  readOnly = false,
 }: {
   suppliers: SupplierOrderInfo[];
   quantities: Record<string, number | "">;
   onChange: (supplierId: string, value: string) => void;
+  readOnly?: boolean;
 }) {
   const numericQty = (supplierId: string) => {
     const value = quantities[supplierId];
@@ -95,12 +97,16 @@ export function SupplierOrderPanel({
                 </div>
               </div>
 
-              <label className="mt-auto block rounded-lg border border-white/80 bg-white p-3">
-                <span className="block text-[10px] font-semibold uppercase tracking-wider text-[var(--slate)]">
+              <div className="mt-auto rounded-lg border border-white/80 bg-white p-3">
+                <label
+                  htmlFor={`order-${supplier.id}`}
+                  className="block text-[10px] font-semibold uppercase tracking-wider text-[var(--slate)]"
+                >
                   Order quantity
-                </span>
+                </label>
                 <div className="mt-1.5 flex items-baseline gap-2">
                   <input
+                    id={`order-${supplier.id}`}
                     type="number"
                     min={0}
                     max={supplier.capacityThisWeek}
@@ -108,7 +114,9 @@ export function SupplierOrderPanel({
                     placeholder="0"
                     value={qty === "" || qty === undefined ? "" : qty}
                     onChange={(event) => onChange(supplier.id, event.target.value)}
-                    className="w-full border-0 bg-transparent p-0 text-2xl font-semibold tabular-nums outline-none placeholder:text-[var(--slate-light)]"
+                    readOnly={readOnly}
+                    disabled={readOnly}
+                    className="w-full border-0 bg-transparent p-0 text-2xl font-semibold tabular-nums outline-none placeholder:text-[var(--slate-light)] disabled:cursor-default"
                     style={{ color: theme.accent }}
                   />
                   <span className="text-xs text-[var(--slate)]">units</span>
@@ -125,7 +133,7 @@ export function SupplierOrderPanel({
                 <div className="mt-1.5 text-[10px] text-[var(--slate)]">
                   Current share {share.toFixed(0)}% · suggested {supplier.suggestedSharePct}%
                 </div>
-              </label>
+              </div>
             </div>
           );
         })}

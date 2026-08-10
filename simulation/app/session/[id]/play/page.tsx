@@ -308,24 +308,48 @@ export default function PlayPage() {
 
             return (
               <Card key={f.facilityId} className="p-5">
-                <div className="mb-4 flex flex-wrap items-center gap-2">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[var(--navy)] text-[11px] font-bold text-white">
-                    {f.facilityId}
-                  </span>
-                  <h2 className="text-sm font-semibold text-[var(--navy)]">Facility {f.facilityId}</h2>
-                  <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] text-[var(--slate)]">
-                    Max inventory {f.maxInventoryCeiling.toLocaleString()}
-                  </span>
-                  <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] text-[var(--slate)]">
-                    Floor {f.minInventoryFloor.toLocaleString()}
-                  </span>
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[var(--navy)] text-[11px] font-bold text-white">
+                      {f.facilityId}
+                    </span>
+                    <h2 className="text-sm font-semibold text-[var(--navy)]">Facility {f.facilityId}</h2>
+                    <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] text-[var(--slate)]">
+                      Max inventory {f.maxInventoryCeiling.toLocaleString()}
+                    </span>
+                    <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] text-[var(--slate)]">
+                      Floor {f.minInventoryFloor.toLocaleString()}
+                    </span>
+                  </div>
+                  {result && (
+                    <span className="rounded bg-[var(--navy)]/8 px-2.5 py-1 text-[11px] font-semibold text-[var(--navy)]">
+                      Week {feedback!.week} outcomes
+                    </span>
+                  )}
                 </div>
 
-                <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                  {result ? (
+                <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  <MetricCard
+                    label={result ? "Ending Inventory" : "On-Hand Inventory"}
+                    value={(result ? result.onHandEnd : f.onHandStart).toLocaleString()}
+                  />
+                  <MetricCard
+                    label="Backlog"
+                    value={(result ? result.backlogEnd : f.backlogStart).toLocaleString()}
+                    accent={(result ? result.backlogEnd : f.backlogStart) > 0}
+                  />
+                  <MetricCard label="Facility Forecast" value={f.forecast.toLocaleString()} />
+                  <MetricCard
+                    label={result ? "Arrived This Week" : "Arriving This Week"}
+                    value={(result ? result.arriving : f.arrivingThisWeek).toLocaleString()}
+                    sublabel={
+                      result && shortfall > 0 ? `Shortfall ${shortfall.toLocaleString()}` : undefined
+                    }
+                  />
+                  {result && (
                     <>
                       <MetricCard
-                        label="Actual Demand"
+                        label={`Actual Demand · Week ${feedback!.week}`}
                         value={result.actualDemand.toLocaleString()}
                         sublabel={
                           demandDelta === null
@@ -340,30 +364,15 @@ export default function PlayPage() {
                         sublabel={`Served ${result.newServed.toLocaleString()}`}
                         accent={fillRate! < 100}
                       />
-                      <MetricCard label="Ending Inventory" value={result.onHandEnd.toLocaleString()} />
-                      <MetricCard label="Backlog" value={result.backlogEnd.toLocaleString()} accent={result.backlogEnd > 0} />
-                      <MetricCard
-                        label="Arrived"
-                        value={result.arriving.toLocaleString()}
-                        sublabel={shortfall > 0 ? `Shortfall ${shortfall.toLocaleString()}` : undefined}
-                      />
                       <MetricCard
                         label="Period Cost"
                         value={`$${Math.round(result.totalCost).toLocaleString()}`}
-                        sublabel={`Forecast ${f.forecast.toLocaleString()}`}
                       />
-                    </>
-                  ) : (
-                    <>
-                      <MetricCard label="On-Hand Inventory" value={f.onHandStart.toLocaleString()} />
-                      <MetricCard label="Backlog" value={f.backlogStart.toLocaleString()} accent={f.backlogStart > 0} />
-                      <MetricCard label="Facility Forecast" value={f.forecast.toLocaleString()} />
-                      <MetricCard label="Arriving This Week" value={f.arrivingThisWeek.toLocaleString()} />
                     </>
                   )}
                 </div>
 
-                {!result && f.customerForecasts.length > 0 && (
+                {f.customerForecasts.length > 0 && (
                   <div className="mb-4 flex flex-wrap gap-2">
                     {f.customerForecasts.map((customer) => (
                       <span
@@ -377,13 +386,12 @@ export default function PlayPage() {
                   </div>
                 )}
 
-                {!feedback && (
-                  <SupplierOrderPanel
-                    suppliers={f.suppliers}
-                    quantities={orders[f.facilityId] ?? {}}
-                    onChange={(supplierId, value) => setOrder(f.facilityId, supplierId, value)}
-                  />
-                )}
+                <SupplierOrderPanel
+                  suppliers={f.suppliers}
+                  quantities={orders[f.facilityId] ?? {}}
+                  onChange={(supplierId, value) => setOrder(f.facilityId, supplierId, value)}
+                  readOnly={Boolean(feedback)}
+                />
               </Card>
             );
           })}

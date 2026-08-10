@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { PageShell, PageHeader, StepIndicator, Card, PrimaryButton, Spinner } from "@/components/ui";
 import { AppHeader } from "@/components/AppHeader";
 
@@ -22,20 +22,38 @@ interface ScenarioPublic {
   forecasting_methods_menu: ForecastingMethod[];
 }
 
-const CUSTOMER_COLORS = ["#1e3a5f", "#b45309", "#0f766e", "#7c2d12", "#475569", "#0369a1"];
-
 export default function ForecastSetupPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const [scenario, setScenario] = useState<ScenarioPublic | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("all");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetch("/api/scenario")
       .then((r) => r.json())
-      .then(setScenario);
+      .then((data: ScenarioPublic) => {
+        setScenario(data);
+      });
   }, []);
+
+  const chartData = useMemo(() => {
+    if (!scenario) return [];
+    return Array.from({ length: 8 }, (_, i) => {
+      if (selectedCustomerId === "all") {
+        return {
+          week: `W-${8 - i}`,
+          demand: scenario.customers.reduce((sum, c) => sum + c.historical_demand_last_8_weeks[i], 0),
+        };
+      }
+      const customer = scenario.customers.find((c) => c.id === selectedCustomerId);
+      return {
+        week: `W-${8 - i}`,
+        demand: customer?.historical_demand_last_8_weeks[i] ?? 0,
+      };
+    });
+  }, [scenario, selectedCustomerId]);
 
   async function handleBegin() {
     if (!selectedMethod) return;
@@ -59,14 +77,8 @@ export default function ForecastSetupPage() {
     );
   }
 
-  const chartData = Array.from({ length: 8 }, (_, i) => {
-    const point: Record<string, number | string> = { week: `-${8 - i}` };
-    for (const customer of scenario.customers) {
-      point[customer.id] = customer.historical_demand_last_8_weeks[i];
-    }
-    point.total = scenario.customers.reduce((sum, c) => sum + c.historical_demand_last_8_weeks[i], 0);
-    return point;
-  });
+  const activeCustomer =
+    selectedCustomerId === "all" ? null : scenario.customers.find((c) => c.id === selectedCustomerId);
 
   return (
     <>
@@ -75,64 +87,52 @@ export default function ForecastSetupPage() {
         <StepIndicator current={2} total={2} label="Forecasting Method" />
         <PageHeader
           title="Choose Your Forecasting Method"
-          subtitle="Forecasts are computed per customer, then aggregated to each facility. Once selected, the method is locked for the rest of the simulation."
+          subtitle="During play, each customer is forecasted independently and then summed at its assigned facility. Review the last 8 weeks of history below, then lock in a method."
         />
 
-        <Card className="mb-6 p-5">
-          <h2 className="mb-1 text-sm font-semibold text-[var(--navy)]">Historical Demand by Customer</h2>
-          <p className="mb-4 text-xs text-[var(--slate)]">
-            Last 8 weeks of frozen history. During play, each customer is forecasted independently and summed by assigned facility.
-          </p>
-          <div style={{ width: "100%", height: 260 }}>
-            <ResponsiveContainer>
-              <LineChart data={chartData} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e8ee" vertical={false} />
-                <XAxis dataKey="week" tick={{ fontSize: 12, fill: "#64748b" }} axisLine={{ stroke: "#e5e8ee" }} tickLine={false} />
-                <YAxis tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ borderRadius: 8, borderColor: "#e5e8ee", fontSize: 13 }} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                {scenario.customers.map((customer, index) => (
-                  <Line
-                    key={customer.id}
-                    type="monotone"
-                    dataKey={customer.id}
-                    name={`${customer.id} ${customer.name}`}
-                    stroke={CUSTOMER_COLORS[index % CUSTOMER_COLORS.length]}
-                    strokeWidth={2}
-                    dot={{ r: 2.5 }}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
+        <Card className="mb-6 overflow-hidden">
+          <div className="border-b border-[var(--card-border)] px-5 py-4">
+            <h2 className="text-sm font-semibold text-[var(--navy)]">Historical demand (last 8 weeks)</h2>
+            <p className="mt-1 text-xs text-[var(--slate)]">
+              View network total, or pick one customer at a time.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <HistoryTab
+                active={selectedCustomerId === "all"}
+                label="All customers"
+                onClick={() => setSelectedCustomerId("all")}
+              />
+              {scenario.customers.map((customer) => (
+                <HistoryTab
+                  key={customer.id}
+                  active={selectedCustomerId === customer.id}
+                  label={customer.id}
+                  onClick={() => setSelectedCustomerId(customer.id)}
+                />
+              ))}
+            </div>
           </div>
 
-          <div className="mt-4 thin-scrollbar overflow-x-auto rounded-lg border border-[var(--card-border)]">
-            <table className="w-full min-w-[640px] text-left text-xs">
-              <thead>
-                <tr className="bg-slate-50 text-[10px] font-semibold uppercase tracking-wider text-[var(--slate)]">
-                  <th className="px-3 py-2">Customer</th>
-                  {Array.from({ length: 8 }, (_, i) => (
-                    <th key={i} className="px-2 py-2 tabular-nums">
-                      W-{8 - i}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {scenario.customers.map((customer) => (
-                  <tr key={customer.id} className="border-t border-[var(--card-border)]">
-                    <td className="px-3 py-2 font-medium text-[var(--navy)]">
-                      {customer.id} · {customer.name}
-                    </td>
-                    {customer.historical_demand_last_8_weeks.map((value, index) => (
-                      <td key={index} className="px-2 py-2 tabular-nums text-[var(--slate)]">
-                        {value.toLocaleString()}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="px-5 pt-4 pb-2">
+            <div className="mb-2 text-xs text-[var(--slate)]">
+              {activeCustomer
+                ? `${activeCustomer.id} · ${activeCustomer.name} (baseline ${activeCustomer.weekly_demand.toLocaleString()}/wk)`
+                : "Combined demand across all six customers"}
+            </div>
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#edf0f4" vertical={false} />
+                  <XAxis dataKey="week" tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 12, fill: "#64748b" }} width={44} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    formatter={(value) => [Number(value).toLocaleString(), "Demand"]}
+                    contentStyle={{ borderRadius: 8, borderColor: "#e5e8ee", fontSize: 13 }}
+                  />
+                  <Bar dataKey="demand" fill="#1e3a5f" radius={[4, 4, 0, 0]} maxBarSize={42} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </Card>
 
@@ -175,5 +175,30 @@ export default function ForecastSetupPage() {
         </div>
       </PageShell>
     </>
+  );
+}
+
+function HistoryTab({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
+        active
+          ? "border-[var(--navy)] bg-[var(--navy)] text-white"
+          : "border-[var(--card-border)] bg-white text-[var(--slate)] hover:border-[var(--slate-light)]",
+      ].join(" ")}
+    >
+      {label}
+    </button>
   );
 }

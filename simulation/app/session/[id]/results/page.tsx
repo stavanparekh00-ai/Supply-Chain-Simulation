@@ -144,29 +144,56 @@ export default function ResultsPage() {
         </NeutralAlert>
 
         <div className="mt-6 mb-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <MetricCard label="Total Cost" value={`$${Math.round(data.totals.totalCost).toLocaleString()}`} accent />
+          <MetricCard label="Your Total Cost" value={`$${Math.round(data.totals.totalCost).toLocaleString()}`} accent />
           <MetricCard label="Procurement Cost" value={`$${Math.round(data.totals.totalProcurementCost).toLocaleString()}`} />
           <MetricCard label="Holding Cost" value={`$${Math.round(data.totals.totalHoldingCost).toLocaleString()}`} />
           <MetricCard label="Backorder Cost" value={`$${Math.round(data.totals.totalBackorderCost).toLocaleString()}`} />
         </div>
 
-        <Card className="mb-8 flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--slate-light)]">
-              Community benchmark
+        <Card className="mb-8 overflow-hidden">
+          <div className="border-b border-[var(--card-border)] bg-slate-50 px-5 py-4">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--slate)]">
+              Player average (all completed runs)
             </div>
-            <div className="mt-1 text-sm text-[var(--slate)]">
-              Based on {data.community.completedPlayers.toLocaleString()} completed simulation
-              {data.community.completedPlayers === 1 ? "" : "s"}.
-            </div>
+            <p className="mt-1 text-sm text-[var(--slate)]">
+              Cumulative average across every completed simulation so far
+              {data.community.completedPlayers > 0
+                ? ` (${data.community.completedPlayers.toLocaleString()} player${data.community.completedPlayers === 1 ? "" : "s"}).`
+                : "."}
+            </p>
           </div>
-          <div className="flex items-baseline gap-3">
-            <span className="text-xs text-[var(--slate)]">Average player cost</span>
-            <span className="text-2xl font-semibold tabular-nums text-[var(--navy)]">
-              {data.community.averageCost === null
-                ? "—"
-                : `$${Math.round(data.community.averageCost).toLocaleString()}`}
-            </span>
+          <div className="grid gap-0 sm:grid-cols-3">
+            <div className="px-5 py-5">
+              <div className="text-xs text-[var(--slate)]">Your total cost</div>
+              <div className="mt-1 text-3xl font-semibold tabular-nums text-[var(--navy)]">
+                ${Math.round(data.totals.totalCost).toLocaleString()}
+              </div>
+            </div>
+            <div className="border-t border-[var(--card-border)] px-5 py-5 sm:border-t-0 sm:border-l">
+              <div className="text-xs text-[var(--slate)]">Average player cost</div>
+              <div className="mt-1 text-3xl font-semibold tabular-nums text-[var(--navy)]">
+                {data.community.averageCost === null
+                  ? "—"
+                  : `$${Math.round(data.community.averageCost).toLocaleString()}`}
+              </div>
+            </div>
+            <div className="border-t border-[var(--card-border)] px-5 py-5 sm:border-t-0 sm:border-l">
+              <div className="text-xs text-[var(--slate)]">vs average</div>
+              <div className="mt-1 text-3xl font-semibold tabular-nums text-[var(--navy)]">
+                {data.community.averageCost === null
+                  ? "—"
+                  : `${data.totals.totalCost <= data.community.averageCost ? "" : "+"}$${Math.round(
+                      data.totals.totalCost - data.community.averageCost
+                    ).toLocaleString()}`}
+              </div>
+              {data.community.averageCost !== null && (
+                <div className="mt-1 text-[11px] text-[var(--slate)]">
+                  {data.totals.totalCost <= data.community.averageCost
+                    ? "At or below the player average"
+                    : "Above the player average"}
+                </div>
+              )}
+            </div>
           </div>
         </Card>
 

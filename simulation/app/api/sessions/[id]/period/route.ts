@@ -120,7 +120,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     horizonWeeks: data.scenario_metadata.horizon_periods,
     minInventoryFloor: data.per_period_cost_parameters.min_inventory_floor_units,
     maxInventoryCeiling: data.per_period_cost_parameters.max_inventory_ceiling_units,
-    softMaxSharePct: data.allocation_guidance?.soft_max_share_pct ?? 50,
     disruptionsThisWeek,
     facilities,
     charts: {

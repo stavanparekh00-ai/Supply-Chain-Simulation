@@ -8,7 +8,6 @@ import {
   disruptionsInWeek,
   landedUnitCost,
   getSupplierById,
-  softMaxSharePct,
 } from "@/lib/scenarioData";
 import { computeForecast, ForecastingMethodId } from "@/lib/forecasting";
 import { arrivingInWeek, OrderDecision } from "@/lib/recursion";
@@ -28,7 +27,6 @@ export interface FacilityWeekInfo {
   arrivingThisWeek: number;
   maxInventoryCeiling: number;
   minInventoryFloor: number;
-  softMaxSharePct: number;
   suppliers: {
     id: string;
     name: string;
@@ -38,7 +36,6 @@ export interface FacilityWeekInfo {
     leadTimeWeeks: number;
     landedUnitCost: number;
     capacityThisWeek: number;
-    suggestedSharePct: number;
   }[];
 }
 
@@ -142,7 +139,6 @@ export async function buildFacilityWeekInfo(
       leadTimeWeeks: s.lead_time_weeks,
       landedUnitCost: landedUnitCost(s, tariffOverride),
       capacityThisWeek: Math.floor(s.capacity_per_facility_per_week * capacityMultiplier),
-      suggestedSharePct: s.suggested_share_pct,
     };
   });
 
@@ -155,7 +151,6 @@ export async function buildFacilityWeekInfo(
     arrivingThisWeek,
     maxInventoryCeiling: data.per_period_cost_parameters.max_inventory_ceiling_units,
     minInventoryFloor: data.per_period_cost_parameters.min_inventory_floor_units,
-    softMaxSharePct: softMaxSharePct(data),
     suppliers,
   };
 }

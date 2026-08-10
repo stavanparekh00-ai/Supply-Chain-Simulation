@@ -40,7 +40,7 @@
       "name": "Overseas Manufacturer",
       "origin_country": "China",
       "tier": "Low",
-      "base_unit_cost": 10,
+      "base_unit_cost": 12,
       "baseline_tariff_pct": 50,
       "lead_time_weeks": 2,
       "reliability_pct": 85,
@@ -362,7 +362,7 @@
       "effect": {
         "tariff_pct_override": 200
       },
-      "description": "Overseas Manufacturer's tariff temporarily escalates from 50% to 200% for this week only, pushing landed cost from $15 to $30 per unit -- temporarily more expensive than Domestic Fab ($18) and Regional Partner ($16)."
+      "description": "Overseas Manufacturer's tariff temporarily escalates from 50% to 200% for this week only, pushing landed cost from $18 to $36 per unit."
     },
     {
       "week": 6,

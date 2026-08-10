@@ -5,11 +5,10 @@ import { useRouter, useParams } from "next/navigation";
 import {
   Area,
   AreaChart,
-  Bar,
   CartesianGrid,
-  ComposedChart,
   Legend,
   Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -247,15 +246,15 @@ export default function PlayPage() {
 
           <ChartCard title="Demand vs forecast" subtitle="Revealed after each submit">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={demandData} margin={{ top: 12, right: 12, left: 0, bottom: 4 }}>
+              <LineChart data={demandData} margin={{ top: 12, right: 12, left: 0, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#edf0f4" vertical={false} />
                 <XAxis dataKey="week" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} width={40} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={tooltipStyle} />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: 11, paddingTop: 4 }} />
-                <Bar dataKey="demand" name="Actual" fill="#f2dcae" radius={[3, 3, 0, 0]} maxBarSize={28} />
+                <Line type="monotone" dataKey="demand" name="Actual" stroke="#b45309" strokeWidth={2.5} dot={{ r: 3 }} />
                 <Line type="monotone" dataKey="forecast" name="Forecast" stroke="#1e3a5f" strokeWidth={2.5} dot={{ r: 3 }} />
-              </ComposedChart>
+              </LineChart>
             </ResponsiveContainer>
           </ChartCard>
         </div>

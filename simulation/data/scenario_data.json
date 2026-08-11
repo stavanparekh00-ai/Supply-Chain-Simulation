@@ -3,10 +3,10 @@
     "product": "Automotive-grade microcontrollers (MCUs)",
     "period_unit": "week",
     "horizon_periods": 10,
-    "notes": "Illustrative synthetic scenario. Overseas baseline landed cost is $12 (tariff applied only during the week-4 spike). Week 6 is a partial-fulfillment disruption (40% of arriving overseas orders delivered). Each facility starts with normal on-hand inventory and zero backlog; backlogs can still arise later from lead times, forecast error, or disruptions. Demand noise is +/-75%."
+    "notes": "Illustrative synthetic scenario. Overseas baseline landed cost is $12 (tariff applied only during the week-4 spike). Each facility starts with normal on-hand inventory and zero backlog; backlogs can still arise later from lead times, forecast error, or disruptions. Demand noise is +/-75%."
   },
   "demand_generation_methodology": {
-    "description": "Historical and actual demand use weekly_demand * U(0.25,1.75) (+/-75%), frozen with seed 20260811. No customer demand-spike disruption. Instead, week 6 applies a supplier partial-fulfillment shortfall (ordered quantity vs delivered quantity) that can create inventory gaps and backlogs if players do not plan ahead."
+    "description": "Historical and actual demand use weekly_demand * U(0.25,1.75) (+/-75%), frozen with seed 20260811. No customer demand-spike disruption."
   },
   "suppliers": [
     {
@@ -366,15 +366,6 @@
         "tariff_pct_override": 100
       },
       "description": "Overseas Manufacturer's tariff jumps to 100% this week, raising landed cost from $12 to $24 per unit."
-    },
-    {
-      "week": 6,
-      "type": "supplier_partial_fill",
-      "target_supplier_id": "overseas_manufacturer",
-      "effect": {
-        "fill_rate": 0.4
-      },
-      "description": "Overseas Manufacturer can deliver only 40% of orders arriving this week (partial fulfillment shortfall). The undelivered balance does not arrive."
     },
     {
       "week": 9,

@@ -368,13 +368,22 @@
       "description": "Overseas Manufacturer's tariff jumps to 200% this week, raising landed cost from $10 to $30 per unit."
     },
     {
-      "week": 9,
+      "week": 6,
       "type": "supplier_capacity_cut",
-      "target_supplier_id": "overseas_manufacturer",
+      "target_supplier_id": "domestic_fab",
       "effect": {
         "capacity_multiplier": 0.5
       },
-      "description": "Overseas Manufacturer's order capacity at every facility is cut by 50% for this week only."
+      "description": "Domestic Fab's order capacity at every facility is cut by 50% for this week only."
+    },
+    {
+      "week": 9,
+      "type": "supplier_capacity_cut",
+      "target_supplier_id": "regional_partner",
+      "effect": {
+        "capacity_multiplier": 0.5
+      },
+      "description": "Regional Partner's order capacity at every facility is cut by 50% for this week only."
     }
   ],
   "forecasting_methods_menu": [

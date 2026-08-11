@@ -3,7 +3,7 @@
     "product": "Automotive-grade microcontrollers (MCUs)",
     "period_unit": "week",
     "horizon_periods": 10,
-    "notes": "Illustrative synthetic scenario. Overseas baseline landed cost is $12 (tariff applied only during the week-4 spike). Each facility starts with normal on-hand inventory and zero backlog; backlogs can still arise later from lead times, forecast error, or disruptions. Demand noise is +/-75%."
+    "notes": "Illustrative synthetic scenario. Overseas baseline landed cost is $10 (tariff applied only during the week-4 spike). Each facility starts with normal on-hand inventory and zero backlog; backlogs can still arise later from lead times, forecast error, or disruptions. Demand noise is +/-75%."
   },
   "demand_generation_methodology": {
     "description": "Historical and actual demand use weekly_demand * U(0.25,1.75) (+/-75%), frozen with seed 20260811. No customer demand-spike disruption."
@@ -14,7 +14,7 @@
       "name": "Domestic Fab",
       "origin_country": "USA",
       "tier": "High",
-      "base_unit_cost": 18,
+      "base_unit_cost": 20,
       "baseline_tariff_pct": 0,
       "lead_time_weeks": 1,
       "reliability_pct": 98,
@@ -27,7 +27,7 @@
       "name": "Regional Partner",
       "origin_country": "Mexico",
       "tier": "Medium",
-      "base_unit_cost": 16,
+      "base_unit_cost": 15,
       "baseline_tariff_pct": 0,
       "lead_time_weeks": 2,
       "reliability_pct": 92,
@@ -40,7 +40,7 @@
       "name": "Overseas Manufacturer",
       "origin_country": "China",
       "tier": "Low",
-      "base_unit_cost": 12,
+      "base_unit_cost": 10,
       "baseline_tariff_pct": 0,
       "lead_time_weeks": 2,
       "reliability_pct": 85,
@@ -365,7 +365,7 @@
       "effect": {
         "tariff_pct_override": 100
       },
-      "description": "Overseas Manufacturer's tariff jumps to 100% this week, raising landed cost from $12 to $24 per unit."
+      "description": "Overseas Manufacturer's tariff jumps to 100% this week, raising landed cost from $10 to $20 per unit."
     },
     {
       "week": 9,

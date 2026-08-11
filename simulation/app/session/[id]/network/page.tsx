@@ -146,7 +146,7 @@ export default function NetworkSetupPage() {
           subtitle={
             locked
               ? "Your facility network is locked for this run. Use the tabs above to move between stages you have already reached."
-              : `Select up to ${MAX_OPEN_FACILITIES} facilities to open (hard limit). Your choice affects fixed costs and how efficiently customer demand can be served.`
+              : `Select up to ${MAX_OPEN_FACILITIES} facilities to open. Your choice affects fixed costs and how efficiently customer demand can be served.`
           }
         />
 
@@ -157,7 +157,7 @@ export default function NetworkSetupPage() {
               <p className="mt-1 text-xs text-[var(--slate)]">
                 {locked
                   ? "Read-only view of the facilities you opened and how customers assign to them."
-                  : `Select facility markers to preview how customers would be assigned to their lowest-cost open facility. Maximum ${MAX_OPEN_FACILITIES} open facilities.`}
+                  : `Select facility markers to preview how customers would be assigned to their lowest-cost open facility.`}
               </p>
             </div>
             <Badge tone="navy">6 customers · max {MAX_OPEN_FACILITIES} of 5 hubs</Badge>
@@ -240,7 +240,7 @@ export default function NetworkSetupPage() {
             {error && <p className="text-xs text-red-700">{error}</p>}
             {!locked && selected.size >= MAX_OPEN_FACILITIES && !error && (
               <p className="text-xs text-[var(--slate)]">
-                Maximum of {MAX_OPEN_FACILITIES} facilities reached. Deselect one to choose a different hub.
+                You already selected {MAX_OPEN_FACILITIES} facilities. Deselect one to choose a different hub.
               </p>
             )}
             {locked && (

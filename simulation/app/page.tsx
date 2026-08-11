@@ -101,10 +101,8 @@ export default function WelcomePage() {
           <p className="mx-auto mt-4 max-w-lg text-center text-sm leading-relaxed text-[var(--slate)]">
             You&apos;ll be making supply chain decisions for a manufacturer of automotive-grade
             microcontrollers across a 10-week planning horizon. Demand each week is uncertain,
-            and a few supply disruptions will occur along the way. Your decisions will be
-            compared to a mathematically optimal benchmark (&quot;the Oracle&quot;) only after
-            the simulation is complete &mdash; nothing about the Oracle&apos;s behavior is shown
-            while you&apos;re deciding.
+            and a few supply disruptions will occur along the way. After the run, your results
+            are compared to a mixed-integer linear programming (MILP) mathematical model.
           </p>
 
           <div className="mt-8 space-y-3 border-t border-[var(--card-border)] pt-6">
@@ -149,9 +147,6 @@ export default function WelcomePage() {
                 placeholder="Enter your name"
                 className="mt-2 w-full rounded-lg border border-[var(--card-border)] bg-white px-3.5 py-2.5 text-sm text-[var(--foreground)] shadow-sm transition-colors placeholder:text-[var(--slate-light)] focus:border-[var(--navy)]"
               />
-              <p className="mt-1.5 text-[11px] text-[var(--slate-light)]">
-                No password required. Your name is used only to identify this simulation run.
-              </p>
             </div>
             {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
 

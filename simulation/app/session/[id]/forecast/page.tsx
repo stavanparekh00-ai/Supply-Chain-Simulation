@@ -189,8 +189,8 @@ export default function ForecastSetupPage() {
           </div>
           <p className="mt-5 text-xs text-[var(--slate-light)]">
             {locked
-              ? "This method is locked. Use the stage tabs to return to Weekly Decisions or Network Design."
-              : "Note: this method cannot be changed once the simulation begins."}
+              ? "Use the stage tabs to return to Weekly Decisions or Network Design."
+              : "This method cannot be changed once the simulation begins."}
           </p>
         </Card>
 

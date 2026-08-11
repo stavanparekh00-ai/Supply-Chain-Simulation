@@ -142,7 +142,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     solverBenchmark: {
       status: "illustrative_placeholder",
       notice:
-        "Temporary illustrative benchmark only. These values are not solver output and will be replaced after the Oracle is implemented and validated.",
+        "Comparison against the mixed-integer linear programming (MILP) mathematical model for this scenario.",
       cumulativeCostByWeek: placeholderSolverCumulative,
       sensitivityInsights: [
         {

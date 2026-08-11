@@ -65,7 +65,7 @@ export function SupplierOrderPanel({
                     {supplier.tier} tier
                   </span>
                   <span className="rounded bg-white/80 px-1.5 py-0.5 font-medium text-[var(--slate)]">
-                    Suggested {supplier.suggestedSharePct}%
+                    Target {supplier.suggestedSharePct}%
                   </span>
                 </div>
               </div>
@@ -131,7 +131,7 @@ export function SupplierOrderPanel({
                   />
                 </div>
                 <div className="mt-1.5 text-[10px] text-[var(--slate)]">
-                  Current share {share.toFixed(0)}% · suggested {supplier.suggestedSharePct}%
+                  Current share {share.toFixed(0)}% · target {supplier.suggestedSharePct}%
                 </div>
               </div>
             </div>

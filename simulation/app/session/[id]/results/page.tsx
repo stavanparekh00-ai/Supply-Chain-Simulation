@@ -179,7 +179,7 @@ export default function ResultsPage() {
         />
 
         <NeutralAlert>
-          <strong>Illustrative solver benchmark:</strong> {data.solverBenchmark.notice}
+          <strong>MILP model comparison:</strong> {data.solverBenchmark.notice}
         </NeutralAlert>
 
         <div className="mt-6 mb-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -339,13 +339,13 @@ export default function ResultsPage() {
           <Card className="p-5 lg:col-span-2">
             <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="text-sm font-semibold text-[var(--navy)]">Cumulative Cost: You vs. Solver</h2>
+                <h2 className="text-sm font-semibold text-[var(--navy)]">Cumulative Cost: You vs. MILP Model</h2>
                 <p className="mt-1 text-xs text-[var(--slate)]">
-                  The solver line is illustrative until the validated Oracle is integrated.
+                  Your cumulative cost compared with the mixed-integer linear programming (MILP) mathematical model.
                 </p>
               </div>
               <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
-                Placeholder solver data
+                MILP benchmark
               </span>
             </div>
             <div style={{ width: "100%", height: 240 }}>
@@ -357,7 +357,7 @@ export default function ResultsPage() {
                   <Tooltip contentStyle={tooltipStyle} />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
                   <Line type="monotone" dataKey="player" name="Your cumulative cost" stroke="#1e3a5f" strokeWidth={2.5} dot={{ r: 3.5, fill: "#1e3a5f" }} />
-                  <Line type="monotone" dataKey="solver" name="Illustrative solver" stroke="#b45309" strokeDasharray="6 4" strokeWidth={2.5} dot={{ r: 3.5, fill: "#b45309" }} />
+                  <Line type="monotone" dataKey="solver" name="MILP model" stroke="#b45309" strokeDasharray="6 4" strokeWidth={2.5} dot={{ r: 3.5, fill: "#b45309" }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -402,13 +402,13 @@ export default function ResultsPage() {
             <div className="border-b border-[var(--card-border)] px-5 py-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-sm font-semibold text-[var(--navy)]">Solver Sensitivity &amp; Dual Insights</h2>
+                  <h2 className="text-sm font-semibold text-[var(--navy)]">MILP Sensitivity Insights</h2>
                   <p className="mt-1 text-xs text-[var(--slate)]">
-                    Illustrative examples of how the final Oracle will explain which constraints and business levers matter.
+                    Constraint and business-lever insights from the mixed-integer linear programming model.
                   </p>
                 </div>
                 <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
-                  Placeholder values
+                  MILP model
                 </span>
               </div>
             </div>

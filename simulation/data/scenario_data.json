@@ -274,7 +274,7 @@
     }
   ],
   "transport_cost_methodology": {
-    "description": "Per-unit transport costs are stylized whole dollars derived from great-circle miles between facility and customer cities (roughly $8 base + $0.018/mile, rounded). Longer lanes cost more; nearby hubs are cheapest. Example: Phoenix→Detroit (F2→C5) is far more expensive than Atlanta→Detroit (F4→C5) or Chicago→Detroit (F5→C5)."
+    "description": "Per-unit transport costs are stylized whole dollars derived from great-circle miles between facility and customer cities (roughly $8 base + $0.018/mile, rounded). Longer lanes cost more; nearby hubs are cheapest. Example: Phoenix\u2192Detroit (F2\u2192C5) is far more expensive than Atlanta\u2192Detroit (F4\u2192C5) or Chicago\u2192Detroit (F5\u2192C5)."
   },
   "transport_cost_matrix": {
     "F1": {
@@ -355,7 +355,7 @@
     "min_inventory_floor_units": 400,
     "max_inventory_ceiling_units": 2500,
     "initial_on_hand_inventory_units": 1600,
-    "note": "Holding/backorder rates are stylized for whole-number readability. Each open facility starts at 1600 on-hand with zero backlog (a normal opening position that can cover a typical week-1 load). Backlogs are earned later via under-ordering, lead-time gaps, or disruptions—not baked into the start. min/max inventory bounds are soft guides for players."
+    "note": "Holding/backorder rates are stylized for whole-number readability. Each open facility starts at 1600 on-hand with zero backlog (a normal opening position that can cover a typical week-1 load). Backlogs are earned later via under-ordering, lead-time gaps, or disruptions\u2014not baked into the start. min/max inventory bounds are soft guides for players."
   },
   "disruption_schedule": [
     {
@@ -369,15 +369,6 @@
     },
     {
       "week": 6,
-      "type": "supplier_capacity_cut",
-      "target_supplier_id": "domestic_fab",
-      "effect": {
-        "capacity_multiplier": 0.5
-      },
-      "description": "Domestic Fab's order capacity at every facility is cut by 50% for this week only."
-    },
-    {
-      "week": 9,
       "type": "demand_spike",
       "target_customer_id": "C2",
       "effect": {
@@ -386,7 +377,7 @@
       "description": "Los Angeles (C2) demand surges to 175% of planned levels this week."
     },
     {
-      "week": 9,
+      "week": 6,
       "type": "demand_spike",
       "target_customer_id": "C5",
       "effect": {
@@ -395,13 +386,22 @@
       "description": "Detroit (C5) demand doubles this week (200% of planned levels)."
     },
     {
-      "week": 9,
+      "week": 6,
       "type": "demand_spike",
       "target_customer_id": "C6",
       "effect": {
         "demand_multiplier": 1.75
       },
       "description": "New York (C6) demand surges to 175% of planned levels this week."
+    },
+    {
+      "week": 9,
+      "type": "supplier_capacity_cut",
+      "target_supplier_id": "domestic_fab",
+      "effect": {
+        "capacity_multiplier": 0.5
+      },
+      "description": "Domestic Fab's order capacity at every facility is cut by 50% for this week only."
     }
   ],
   "forecasting_methods_menu": [

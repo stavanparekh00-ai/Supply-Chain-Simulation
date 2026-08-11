@@ -161,6 +161,23 @@ export function landedUnitCost(supplier: Supplier, tariffPctOverride?: number): 
  * (weeks 1..currentWeek-1). Never includes currentWeek's own actual demand
  * or any future week.
  */
+/**
+ * SAFE accessor: ground-truth demand for one customer in a given week,
+ * including any demand_spike disruption multipliers for that week.
+ */
+export function customerActualDemand(data: ScenarioData, customerId: string, week: number): number {
+  const customer = getCustomerById(data, customerId);
+  const base = customer.actual_demand_ground_truth_by_week[week - 1] ?? 0;
+  const spikes = disruptionsInWeek(data, week).filter(
+    (d) => d.type === "demand_spike" && d.target_customer_id === customerId
+  );
+  let multiplier = 1;
+  for (const spike of spikes) {
+    multiplier *= Number(spike.effect.demand_multiplier ?? 1);
+  }
+  return Math.round(base * multiplier);
+}
+
 export function customerDemandHistoryForForecast(
   data: ScenarioData,
   customerId: string,
@@ -168,10 +185,11 @@ export function customerDemandHistoryForForecast(
 ): number[] {
   if (currentWeek < 1) throw new Error("currentWeek must be >= 1");
   const customer = getCustomerById(data, customerId);
-  return [
-    ...customer.historical_demand_last_8_weeks,
-    ...customer.actual_demand_ground_truth_by_week.slice(0, currentWeek - 1),
-  ];
+  const revealed: number[] = [];
+  for (let week = 1; week < currentWeek; week++) {
+    revealed.push(customerActualDemand(data, customerId, week));
+  }
+  return [...customer.historical_demand_last_8_weeks, ...revealed];
 }
 
 /**
@@ -193,9 +211,7 @@ export function facilityDemandHistoryForForecast(
     combined.push(customers.reduce((sum, c) => sum + c.historical_demand_last_8_weeks[i], 0));
   }
   for (let week = 1; week < currentWeek; week++) {
-    combined.push(
-      customers.reduce((sum, c) => sum + c.actual_demand_ground_truth_by_week[week - 1], 0)
-    );
+    combined.push(customers.reduce((sum, c) => sum + customerActualDemand(data, c.id, week), 0));
   }
   return combined;
 }
@@ -208,7 +224,7 @@ export function facilityActualDemand(
   week: number
 ): number {
   const customers = customersForFacility(data, openedFacilities, facilityId);
-  return customers.reduce((sum, c) => sum + c.actual_demand_ground_truth_by_week[week - 1], 0);
+  return customers.reduce((sum, c) => sum + customerActualDemand(data, c.id, week), 0);
 }
 
 /** SAFE accessor: disruption(s), if any, occurring exactly in this week. */

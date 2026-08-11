@@ -6,7 +6,7 @@
     "notes": "Illustrative synthetic scenario. Overseas baseline landed cost is $10 (tariff applied only during the week-4 spike). Each facility starts with normal on-hand inventory and zero backlog; backlogs can still arise later from lead times, forecast error, or disruptions. Demand noise is +/-75%."
   },
   "demand_generation_methodology": {
-    "description": "Historical and actual demand use weekly_demand * U(0.25,1.75) (+/-75%), frozen with seed 20260811. No customer demand-spike disruption."
+    "description": "Historical and actual demand use weekly_demand * U(0.25,1.75) (+/-75%), frozen with seed 20260811. Additional demand_spike disruptions multiply specific customers' realized demand in selected weeks."
   },
   "suppliers": [
     {
@@ -368,6 +368,15 @@
       "description": "Overseas Manufacturer's tariff jumps to 200% this week, raising landed cost from $10 to $30 per unit."
     },
     {
+      "week": 5,
+      "type": "demand_spike",
+      "target_customer_id": "C2",
+      "effect": {
+        "demand_multiplier": 1.75
+      },
+      "description": "Los Angeles (C2) demand surges to 175% of planned levels this week."
+    },
+    {
       "week": 6,
       "type": "supplier_capacity_cut",
       "target_supplier_id": "domestic_fab",
@@ -377,13 +386,22 @@
       "description": "Domestic Fab's order capacity at every facility is cut by 50% for this week only."
     },
     {
-      "week": 9,
-      "type": "supplier_capacity_cut",
-      "target_supplier_id": "regional_partner",
+      "week": 7,
+      "type": "demand_spike",
+      "target_customer_id": "C6",
       "effect": {
-        "capacity_multiplier": 0.5
+        "demand_multiplier": 1.75
       },
-      "description": "Regional Partner's order capacity at every facility is cut by 50% for this week only."
+      "description": "New York (C6) demand surges to 175% of planned levels this week."
+    },
+    {
+      "week": 9,
+      "type": "demand_spike",
+      "target_customer_id": "C5",
+      "effect": {
+        "demand_multiplier": 2.0
+      },
+      "description": "Detroit (C5) demand doubles this week (200% of planned levels)."
     }
   ],
   "forecasting_methods_menu": [

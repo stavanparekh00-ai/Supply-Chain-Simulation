@@ -363,9 +363,9 @@
       "type": "tariff_spike",
       "target_supplier_id": "overseas_manufacturer",
       "effect": {
-        "tariff_pct_override": 100
+        "tariff_pct_override": 200
       },
-      "description": "Overseas Manufacturer's tariff jumps to 100% this week, raising landed cost from $10 to $20 per unit."
+      "description": "Overseas Manufacturer's tariff jumps to 200% this week, raising landed cost from $10 to $30 per unit."
     },
     {
       "week": 9,

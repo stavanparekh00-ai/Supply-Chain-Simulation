@@ -368,15 +368,6 @@
       "description": "Overseas Manufacturer's tariff jumps to 200% this week, raising landed cost from $10 to $30 per unit."
     },
     {
-      "week": 5,
-      "type": "demand_spike",
-      "target_customer_id": "C2",
-      "effect": {
-        "demand_multiplier": 1.75
-      },
-      "description": "Los Angeles (C2) demand surges to 175% of planned levels this week."
-    },
-    {
       "week": 6,
       "type": "supplier_capacity_cut",
       "target_supplier_id": "domestic_fab",
@@ -386,13 +377,13 @@
       "description": "Domestic Fab's order capacity at every facility is cut by 50% for this week only."
     },
     {
-      "week": 7,
+      "week": 9,
       "type": "demand_spike",
-      "target_customer_id": "C6",
+      "target_customer_id": "C2",
       "effect": {
         "demand_multiplier": 1.75
       },
-      "description": "New York (C6) demand surges to 175% of planned levels this week."
+      "description": "Los Angeles (C2) demand surges to 175% of planned levels this week."
     },
     {
       "week": 9,
@@ -402,6 +393,15 @@
         "demand_multiplier": 2.0
       },
       "description": "Detroit (C5) demand doubles this week (200% of planned levels)."
+    },
+    {
+      "week": 9,
+      "type": "demand_spike",
+      "target_customer_id": "C6",
+      "effect": {
+        "demand_multiplier": 1.75
+      },
+      "description": "New York (C6) demand surges to 175% of planned levels this week."
     }
   ],
   "forecasting_methods_menu": [

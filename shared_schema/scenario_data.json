@@ -3,7 +3,7 @@
     "product": "Automotive-grade microcontrollers (MCUs)",
     "period_unit": "week",
     "horizon_periods": 10,
-    "notes": "Illustrative synthetic scenario. Overseas baseline landed cost is $10 (tariff applied only during the week-4 spike). Each facility starts with normal on-hand inventory and zero backlog; backlogs can still arise later from lead times, forecast error, or disruptions. Demand noise is +/-75%."
+    "notes": "Illustrative synthetic scenario. Overseas baseline landed cost is $10; a temporary tariff raises it to $30 in weeks 4 and 5. Each facility starts with normal on-hand inventory and zero backlog; backlogs can still arise later from lead times, forecast error, or disruptions. Demand noise is +/-75%."
   },
   "demand_generation_methodology": {
     "description": "Historical and actual demand use weekly_demand * U(0.25,1.75) (+/-75%), frozen with seed 20260811. Additional demand_spike disruptions multiply specific customers' realized demand in selected weeks."
@@ -365,7 +365,25 @@
       "effect": {
         "tariff_pct_override": 200
       },
-      "description": "Overseas Manufacturer's tariff jumps to 200% this week, raising landed cost from $10 to $30 per unit."
+      "description": "The government has announced a 200% tariff on overseas microcontrollers for an uncertain period. Overseas Manufacturer's landed cost rises from $10 to $30 per unit."
+    },
+    {
+      "week": 5,
+      "type": "tariff_spike",
+      "target_supplier_id": "overseas_manufacturer",
+      "effect": {
+        "tariff_pct_override": 200
+      },
+      "description": "The government tariff remains in effect. Overseas Manufacturer's landed cost stays at $30 per unit this week."
+    },
+    {
+      "week": 6,
+      "type": "tariff_restored",
+      "target_supplier_id": "overseas_manufacturer",
+      "effect": {
+        "tariff_pct_override": 0
+      },
+      "description": "The government has withdrawn the temporary tariff. Overseas Manufacturer's landed cost returns to $10 per unit."
     },
     {
       "week": 6,
@@ -374,7 +392,7 @@
       "effect": {
         "demand_multiplier": 1.75
       },
-      "description": "Los Angeles (C2) demand surges to 175% of planned levels this week."
+      "description": "A coordinated rush of customer orders has begun. Los Angeles (C2) demand rises to 175% of planned levels this week."
     },
     {
       "week": 6,
@@ -383,7 +401,7 @@
       "effect": {
         "demand_multiplier": 2.0
       },
-      "description": "Detroit (C5) demand doubles this week (200% of planned levels)."
+      "description": "The customer-order surge also affects Detroit (C5), where demand doubles to 200% of planned levels this week."
     },
     {
       "week": 6,
@@ -392,7 +410,7 @@
       "effect": {
         "demand_multiplier": 1.75
       },
-      "description": "New York (C6) demand surges to 175% of planned levels this week."
+      "description": "The customer-order surge also affects New York (C6), where demand rises to 175% of planned levels this week."
     },
     {
       "week": 9,
@@ -401,7 +419,7 @@
       "effect": {
         "capacity_multiplier": 0.5
       },
-      "description": "Domestic Fab's order capacity at every facility is cut by 50% for this week only."
+      "description": "An equipment accident has temporarily shut down part of Domestic Fab's production line, cutting available order capacity by 50% this week."
     }
   ],
   "forecasting_methods_menu": [

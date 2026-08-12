@@ -251,7 +251,7 @@ export default function ResultsPage() {
         <ComparisonControls
           showMilp={showMilp}
           showCommunity={showCommunity}
-          communityAvailable={data.community.completedPlayers > 0}
+          communityPlayers={data.community.completedPlayers}
           onMilp={() => setShowMilp((value) => !value)}
           onCommunity={() => setShowCommunity((value) => !value)}
         />
@@ -333,16 +333,17 @@ function PerformanceHero({ data }: { data: ResultsResponse }) {
 function ComparisonControls({
   showMilp,
   showCommunity,
-  communityAvailable,
+  communityPlayers,
   onMilp,
   onCommunity,
 }: {
   showMilp: boolean;
   showCommunity: boolean;
-  communityAvailable: boolean;
+  communityPlayers: number;
   onMilp: () => void;
   onCommunity: () => void;
 }) {
+  const communityAvailable = communityPlayers > 0;
   return (
     <Card className="my-6 flex flex-wrap items-center justify-between gap-3 px-4 py-3">
       <div>
@@ -364,7 +365,7 @@ function ComparisonControls({
           active={showCommunity && communityAvailable}
           label={
             communityAvailable
-              ? `Other players (${communityAvailable ? "avg" : "0"})`
+              ? `Other players avg (${communityPlayers})`
               : "Other players (none yet)"
           }
           color={COMMUNITY_COLOR}
@@ -711,10 +712,17 @@ function ForecastCharts({
               RMSE {Math.round(data.forecastAccuracy.rmse).toLocaleString()}
             </span>
             <span className="rounded-full bg-white px-2.5 py-1 text-[var(--slate)] shadow-sm">
+              MSE {Math.round(data.forecastAccuracy.mse).toLocaleString()}
+            </span>
+            <span className="rounded-full bg-white px-2.5 py-1 text-[var(--slate)] shadow-sm">
               MAPE{" "}
               {data.forecastAccuracy.mapePct === null
                 ? "—"
                 : `${data.forecastAccuracy.mapePct.toFixed(1)}%`}
+            </span>
+            <span className="rounded-full bg-white px-2.5 py-1 text-[var(--slate)] shadow-sm">
+              Bias {data.forecastAccuracy.bias >= 0 ? "+" : ""}
+              {Math.round(data.forecastAccuracy.bias).toLocaleString()}
             </span>
           </div>
         </div>

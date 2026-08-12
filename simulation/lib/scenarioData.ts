@@ -42,7 +42,7 @@ export interface Customer {
   map_x: number;
   map_y: number;
   weekly_demand: number;
-  historical_demand_last_8_weeks: number[];
+  historical_demand_last_20_weeks: number[];
   actual_demand_ground_truth_by_week: number[];
 }
 
@@ -194,7 +194,7 @@ export function customerDemandHistoryForForecast(
   for (let week = 1; week < currentWeek; week++) {
     revealed.push(customerActualDemand(data, customerId, week));
   }
-  return [...customer.historical_demand_last_8_weeks, ...revealed];
+  return [...customer.historical_demand_last_20_weeks, ...revealed];
 }
 
 /**
@@ -210,10 +210,10 @@ export function facilityDemandHistoryForForecast(
 ): number[] {
   if (currentWeek < 1) throw new Error("currentWeek must be >= 1");
   const customers = customersForFacility(data, openedFacilities, facilityId);
-  const historyLength = customers[0]?.historical_demand_last_8_weeks.length ?? 0;
+  const historyLength = customers[0]?.historical_demand_last_20_weeks.length ?? 0;
   const combined: number[] = [];
   for (let i = 0; i < historyLength; i++) {
-    combined.push(customers.reduce((sum, c) => sum + c.historical_demand_last_8_weeks[i], 0));
+    combined.push(customers.reduce((sum, c) => sum + c.historical_demand_last_20_weeks[i], 0));
   }
   for (let week = 1; week < currentWeek; week++) {
     combined.push(customers.reduce((sum, c) => sum + customerActualDemand(data, c.id, week), 0));

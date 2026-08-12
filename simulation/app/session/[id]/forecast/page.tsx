@@ -24,7 +24,7 @@ interface Customer {
   id: string;
   name: string;
   weekly_demand: number;
-  historical_demand_last_8_weeks: number[];
+  historical_demand_last_20_weeks: number[];
 }
 interface ForecastingMethod {
   id: ForecastingMethodId;
@@ -68,11 +68,13 @@ export default function ForecastSetupPage() {
         : scenario.customers.filter(
             (customer) => customer.id === selectedCustomerId
           );
+    const historyLength =
+      customers[0]?.historical_demand_last_20_weeks.length ?? 0;
 
-    const historicalRows = Array.from({ length: 8 }, (_, index) => {
+    const historicalRows = Array.from({ length: historyLength }, (_, index) => {
       const demand = customers.reduce(
         (sum, customer) =>
-          sum + customer.historical_demand_last_8_weeks[index],
+          sum + customer.historical_demand_last_20_weeks[index],
         0
       );
       const forecast =
@@ -82,13 +84,13 @@ export default function ForecastSetupPage() {
                 sum +
                 computeForecast(
                   activeMethod,
-                  customer.historical_demand_last_8_weeks.slice(0, index)
+                  customer.historical_demand_last_20_weeks.slice(0, index)
                 ),
               0
             )
           : null;
       return {
-        week: `W-${8 - index}`,
+        week: `W-${historyLength - index}`,
         demand,
         forecast,
       };
@@ -100,7 +102,7 @@ export default function ForecastSetupPage() {
             sum +
             computeForecast(
               activeMethod,
-              customer.historical_demand_last_8_weeks
+              customer.historical_demand_last_20_weeks
             ),
           0
         )
@@ -158,7 +160,7 @@ export default function ForecastSetupPage() {
           subtitle={
             locked
               ? "Your forecasting method is locked for this run. Use the stage tabs above to move between stages you have already reached."
-              : "During play, each customer is forecasted independently and then summed at its assigned facility. Review the last 8 weeks of history below, then lock in a method."
+              : "During play, each customer is forecasted independently and then summed at its assigned facility. Review the last 20 weeks of history below, then lock in a method."
           }
         />
 

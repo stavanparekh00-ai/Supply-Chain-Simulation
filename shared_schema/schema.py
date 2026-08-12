@@ -73,7 +73,7 @@ class Customer:
     map_x: float
     map_y: float
     weekly_demand: float
-    historical_demand_last_8_weeks: List[float]
+    historical_demand_last_20_weeks: List[float]
     actual_demand_ground_truth_by_week: List[float]
     """Fixed, frozen ground-truth demand for the simulation horizon (one value
     per week). Generated independently of any forecasting method so that
@@ -216,7 +216,7 @@ class ScenarioData:
             raise ValueError("current_week must be >= 1")
         customer = self.customer_by_id(customer_id)
         already_revealed = customer.actual_demand_ground_truth_by_week[: current_week - 1]
-        return customer.historical_demand_last_8_weeks + already_revealed
+        return customer.historical_demand_last_20_weeks + already_revealed
 
     def disruptions_in_week(self, week: int) -> List[DisruptionEvent]:
         """Disruption(s), if any, that occur exactly in this week -- use this
@@ -325,7 +325,7 @@ if __name__ == "__main__":
     assert week6_spike_value not in hist_week6[-1:], (
         "LOOKAHEAD BUG: week 6's own demand-spike value leaked into its own forecast history!"
     )
-    assert len(hist_week6) == len(data.customer_by_id("C5").historical_demand_last_8_weeks) + 5, (
+    assert len(hist_week6) == len(data.customer_by_id("C5").historical_demand_last_20_weeks) + 5, (
         "History length is wrong -- should be 8 historical + weeks 1-5 revealed (5 weeks), not including week 6 itself."
     )
     print("OK: week 6's forecast history does not contain week 6's own (not-yet-revealed) actual demand.")

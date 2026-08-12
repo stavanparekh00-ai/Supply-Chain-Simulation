@@ -5,7 +5,7 @@ from scipy.optimize import milp, LinearConstraint, Bounds
 c3_hist = [25, 23, 28, 21, 21, 24, 29, 26]
 c5_hist = [30, 24, 27, 30, 31, 32, 27, 29]
 f3_hist = [a + b for a, b in zip(c3_hist, c5_hist)]
-print("F3 historical demand (last 8 weeks before simulation start):")
+print("F3 historical demand (last 20 weeks before simulation start):")
 print(f"  C3: {c3_hist}")
 print(f"  C5: {c5_hist}")
 print(f"  F3 total (C3+C5): {f3_hist}")

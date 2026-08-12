@@ -12,7 +12,7 @@ import { FORECASTING_METHODS } from "@/lib/forecasting";
  *  - disruption_schedule (revealed week-by-week via /api/sessions/[id]/period
  *    instead, never all at once up front)
  *  - each customer's actual_demand_ground_truth_by_week (future ground
- *    truth -- only historical_demand_last_8_weeks is exposed here)
+ *    truth -- only historical_demand_last_20_weeks is exposed here)
  */
 export async function GET() {
   const data = loadScenarioData();
@@ -27,7 +27,7 @@ export async function GET() {
       map_x: c.map_x,
       map_y: c.map_y,
       weekly_demand: c.weekly_demand,
-      historical_demand_last_8_weeks: c.historical_demand_last_8_weeks,
+      historical_demand_last_20_weeks: c.historical_demand_last_20_weeks,
     })),
     transport_cost_matrix: data.transport_cost_matrix,
     suppliers: data.suppliers.map((s) => ({

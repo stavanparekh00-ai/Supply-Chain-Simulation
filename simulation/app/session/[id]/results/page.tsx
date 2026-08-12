@@ -6,6 +6,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  LabelList,
   Legend,
   Line,
   LineChart,
@@ -266,15 +267,15 @@ export default function ResultsPage() {
             sublabel={data.forecastAccuracy.methodName}
           />
           <MetricCard
-            label="Cost Standing"
+            label="Cost Rank"
             value={
               data.community.costPercentile
-                ? `Top ${data.community.costPercentile.topPercent}%`
+                ? `${data.community.costPercentile.rank}/${data.community.costPercentile.totalPlayers}`
                 : "—"
             }
             sublabel={
               data.community.costPercentile
-                ? `#${data.community.costPercentile.rank} of ${data.community.costPercentile.totalPlayers}`
+                ? "Lower total cost ranks higher"
                 : "Needs at least two completed runs"
             }
           />
@@ -346,15 +347,15 @@ function PerformanceHero({ data }: { data: ResultsResponse }) {
         </div>
         <div className="border-t border-[var(--card-border)] bg-slate-50 p-6 lg:border-l lg:border-t-0">
           <div className="text-xs text-[var(--slate)]">Your cost rank</div>
-          <div className="mt-1 text-2xl font-semibold text-[var(--navy)]">
+          <div className="mt-1 text-2xl font-semibold tabular-nums text-[var(--navy)]">
             {data.community.costPercentile
-              ? `Top ${data.community.costPercentile.topPercent}%`
+              ? `${data.community.costPercentile.rank} / ${data.community.costPercentile.totalPlayers}`
               : "More runs needed"}
           </div>
           <div className="mt-2 text-xs leading-relaxed text-[var(--slate)]">
             {data.community.costPercentile
-              ? `Rank ${data.community.costPercentile.rank} among ${data.community.costPercentile.totalPlayers} completed runs; lower cost ranks higher.`
-              : "A percentile appears after another player completes the simulation."}
+              ? "Lower total cost ranks higher among completed runs."
+              : "A rank appears after another player completes the simulation."}
           </div>
         </div>
       </div>
@@ -747,16 +748,17 @@ function ForecastCharts({
   showMilp: boolean;
   showCommunity: boolean;
 }) {
-  const milpMethodLabel = `MILP · ${data.forecastAccuracy.milp.methodName}`;
   const milpByWeek = new Map(
     data.forecastAccuracy.milp.byWeek.map((row) => [row.week, row.forecast])
   );
   const weekly = data.forecastAccuracy.byWeek.map((row) => ({
     week: `W${row.week}`,
-    Forecast: row.forecast,
+    "Your forecast": row.forecast,
     Actual: row.actual,
-    [milpMethodLabel]: milpByWeek.get(row.week) ?? null,
+    "MILP forecast": milpByWeek.get(row.week) ?? null,
   }));
+  const showPeerBars =
+    showCommunity && data.forecastAccuracy.peers.completedWithSameMethod > 0;
   const errors = [
     {
       metric: "MAE",
@@ -787,8 +789,11 @@ function ForecastCharts({
               Forecast accuracy · {data.forecastAccuracy.methodName}
             </h2>
             <p className="mt-1 text-xs text-[var(--slate)]">
-              Actual demand, forecast, and error across{" "}
-              {data.forecastAccuracy.observations} facility-weeks.
+              Actual demand, your forecast
+              {showMilp
+                ? `, and MILP (${data.forecastAccuracy.milp.methodName.toLowerCase()})`
+                : ""}{" "}
+              across {data.forecastAccuracy.observations} facility-weeks.
             </p>
           </div>
           <div className="flex flex-wrap gap-2 text-[11px]">
@@ -811,6 +816,12 @@ function ForecastCharts({
               Bias {data.forecastAccuracy.bias >= 0 ? "+" : ""}
               {Math.round(data.forecastAccuracy.bias).toLocaleString()}
             </span>
+            {showMilp && (
+              <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-800 shadow-sm">
+                MILP MAE {Math.round(data.forecastAccuracy.milp.mae)} · RMSE{" "}
+                {Math.round(data.forecastAccuracy.milp.rmse)}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -846,7 +857,7 @@ function ForecastCharts({
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Line
                   type="monotone"
-                  dataKey="Forecast"
+                  dataKey="Your forecast"
                   stroke={PLAYER_COLOR}
                   strokeWidth={2.5}
                   dot={{ r: 3 }}
@@ -856,21 +867,27 @@ function ForecastCharts({
                   dataKey="Actual"
                   stroke={ACTUAL_COLOR}
                   strokeWidth={2.5}
-                  strokeDasharray="4 3"
+                  strokeDasharray="5 4"
                   dot={{ r: 3 }}
                 />
                 {showMilp && (
                   <Line
                     type="monotone"
-                    dataKey={milpMethodLabel}
+                    dataKey="MILP forecast"
                     stroke={MILP_COLOR}
-                    strokeWidth={2.5}
-                    dot={{ r: 3 }}
+                    strokeWidth={2}
+                    strokeDasharray="2 2"
+                    dot={{ r: 4, fill: MILP_COLOR }}
                   />
                 )}
               </LineChart>
             </ResponsiveContainer>
           </div>
+          {showMilp && (
+            <p className="mt-2 text-[11px] leading-relaxed text-[var(--slate-light)]">
+              MILP uses perfect foresight, so its forecast line matches Actual.
+            </p>
+          )}
         </div>
         <div className="p-5">
           <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--slate)]">
@@ -880,7 +897,7 @@ function ForecastCharts({
             <ResponsiveContainer>
               <BarChart
                 data={errors}
-                margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+                margin={{ top: 18, right: 8, left: 0, bottom: 0 }}
               >
                 <CartesianGrid
                   strokeDasharray="3 3"
@@ -905,30 +922,53 @@ function ForecastCharts({
                   dataKey="You"
                   fill={PLAYER_COLOR}
                   radius={[4, 4, 0, 0]}
-                />
+                  minPointSize={3}
+                >
+                  <LabelList
+                    dataKey="You"
+                    position="top"
+                    style={{ fontSize: 10, fill: "#64748b" }}
+                  />
+                </Bar>
                 {showMilp && (
                   <Bar
                     dataKey="MILP"
                     fill={MILP_COLOR}
                     radius={[4, 4, 0, 0]}
-                  />
-                )}
-                {showCommunity &&
-                  data.forecastAccuracy.peers.completedWithSameMethod > 0 && (
-                    <Bar
-                      dataKey="Same-method average"
-                      fill={COMMUNITY_COLOR}
-                      radius={[4, 4, 0, 0]}
+                    minPointSize={3}
+                  >
+                    <LabelList
+                      dataKey="MILP"
+                      position="top"
+                      style={{ fontSize: 10, fill: "#92400e" }}
                     />
-                  )}
+                  </Bar>
+                )}
+                {showPeerBars && (
+                  <Bar
+                    dataKey="Same-method average"
+                    fill={COMMUNITY_COLOR}
+                    radius={[4, 4, 0, 0]}
+                    minPointSize={3}
+                  >
+                    <LabelList
+                      dataKey="Same-method average"
+                      position="top"
+                      style={{ fontSize: 10, fill: "#0f766e" }}
+                    />
+                  </Bar>
+                )}
               </BarChart>
             </ResponsiveContainer>
           </div>
           <p className="mt-2 text-[11px] leading-relaxed text-[var(--slate-light)]">
-            Lower error is better. The MILP benchmark plans with{" "}
-            {data.forecastAccuracy.milp.methodName.toLowerCase()} of realized
-            demand (MAE/RMSE = 0). Same-method average compares peers who chose
-            your forecasting method.
+            Lower error is better.
+            {showMilp
+              ? " MILP MAE/RMSE are 0 because it plans with realized demand."
+              : ""}
+            {showPeerBars
+              ? " Same-method average compares peers who chose your forecasting method."
+              : ""}
           </p>
         </div>
       </div>

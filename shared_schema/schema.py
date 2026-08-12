@@ -312,7 +312,7 @@ if __name__ == "__main__":
     print(f"Disruptions: {[(d.week, d.type) for d in data.disruption_schedule]}")
     overseas = data.supplier_by_id("overseas_manufacturer")
     print(f"Overseas landed cost normally: ${overseas.landed_unit_cost()}, "
-          f"during tariff spike: ${overseas.landed_unit_cost(tariff_pct_override=100)}")
+          f"during tariff spike: ${overseas.landed_unit_cost(tariff_pct_override=200)}")
     print(f"C5 actual demand, week 6: {data.actual_demand('C5', 6)}")
     print(f"C5 actual demand, week 5: {data.actual_demand('C5', 5)}")
 

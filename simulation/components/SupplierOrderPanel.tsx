@@ -80,7 +80,9 @@ export function SupplierOrderPanel({
                 <div>
                   <div className="text-[var(--slate-light)]">Lead time</div>
                   <div className="font-semibold tabular-nums text-[var(--foreground)]">
-                    {supplier.leadTimeWeeks} wk
+                    {supplier.leadTimeWeeks === 1
+                      ? "Same-week delivery"
+                      : `${supplier.leadTimeWeeks} wk`}
                   </div>
                 </div>
                 <div>

@@ -267,7 +267,7 @@ export default function ResultsPage() {
             sublabel={data.forecastAccuracy.methodName}
           />
           <MetricCard
-            label="Cost Rank"
+            label="Rank"
             value={
               data.community.costPercentile
                 ? `${data.community.costPercentile.rank}/${data.community.costPercentile.totalPlayers}`
@@ -275,7 +275,7 @@ export default function ResultsPage() {
             }
             sublabel={
               data.community.costPercentile
-                ? "Lower total cost ranks higher"
+                ? "Based on overall performance"
                 : "Needs at least two completed runs"
             }
           />
@@ -346,16 +346,10 @@ function PerformanceHero({ data }: { data: ResultsResponse }) {
           </div>
         </div>
         <div className="border-t border-[var(--card-border)] bg-slate-50 p-6 lg:border-l lg:border-t-0">
-          <div className="text-xs text-[var(--slate)]">Your cost rank</div>
-          <div className="mt-1 text-2xl font-semibold tabular-nums text-[var(--navy)]">
+          <div className="text-xl font-semibold leading-snug text-[var(--navy)] sm:text-2xl">
             {data.community.costPercentile
-              ? `${data.community.costPercentile.rank} / ${data.community.costPercentile.totalPlayers}`
-              : "More runs needed"}
-          </div>
-          <div className="mt-2 text-xs leading-relaxed text-[var(--slate)]">
-            {data.community.costPercentile
-              ? "Lower total cost ranks higher among completed runs."
-              : "A rank appears after another player completes the simulation."}
+              ? `You ranked ${data.community.costPercentile.rank} out of ${data.community.costPercentile.totalPlayers} based on overall performance`
+              : "Rank available after another completed run"}
           </div>
         </div>
       </div>

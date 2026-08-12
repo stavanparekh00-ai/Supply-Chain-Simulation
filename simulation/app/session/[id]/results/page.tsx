@@ -270,14 +270,10 @@ export default function ResultsPage() {
             label="Rank"
             value={
               data.community.costPercentile
-                ? `${data.community.costPercentile.rank}/${data.community.costPercentile.totalPlayers}`
+                ? `${data.community.costPercentile.rank} out of ${data.community.costPercentile.totalPlayers}`
                 : "—"
             }
-            sublabel={
-              data.community.costPercentile
-                ? "Based on overall performance"
-                : "Needs at least two completed runs"
-            }
+            sublabel="Overall performance"
           />
         </div>
 
@@ -345,8 +341,8 @@ function PerformanceHero({ data }: { data: ResultsResponse }) {
             )}
           </div>
         </div>
-        <div className="border-t border-[var(--card-border)] bg-slate-50 p-6 lg:border-l lg:border-t-0">
-          <div className="text-xl font-semibold leading-snug text-[var(--navy)] sm:text-2xl">
+        <div className="border-t border-[var(--card-border)] bg-slate-50 p-6 lg:border-l lg:border-t-0 flex items-center">
+          <div className="text-lg font-semibold leading-snug text-[var(--navy)] sm:text-xl">
             {data.community.costPercentile
               ? `You ranked ${data.community.costPercentile.rank} out of ${data.community.costPercentile.totalPlayers} based on overall performance`
               : "Rank available after another completed run"}

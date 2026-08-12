@@ -27,19 +27,19 @@ const VERIFIED_ORDERS: Record<
   Record<BenchmarkSupplier, number[]>
 > = {
   F1: {
-    domestic_fab: [108, 317, 226, 0, 699, 533, 311, 75, 150, 0],
-    regional_partner: [216, 634, 452, 0, 699, 542, 622, 147, 300, 0],
-    overseas_manufacturer: [108, 317, 226, 0, 0, 358, 311, 74, 150, 0],
+    domestic_fab: [749, 107, 350, 93, 701, 511, 73, 150, 0, 0],
+    regional_partner: [616, 214, 700, 93, 700, 575, 146, 300, 0, 0],
+    overseas_manufacturer: [455, 107, 350, 0, 0, 362, 73, 150, 0, 0],
   },
   F4: {
-    domestic_fab: [6, 99, 245, 0, 700, 125, 255, 208, 88, 0],
-    regional_partner: [12, 198, 490, 0, 700, 146, 510, 416, 173, 0],
-    overseas_manufacturer: [6, 99, 245, 0, 0, 90, 255, 208, 87, 0],
+    domestic_fab: [145, 85, 350, 184, 237, 255, 208, 88, 0, 0],
+    regional_partner: [290, 170, 700, 184, 236, 510, 416, 173, 0, 0],
+    overseas_manufacturer: [145, 85, 350, 0, 0, 255, 208, 87, 0, 0],
   },
   F5: {
-    domestic_fab: [85, 288, 288, 0, 566, 214, 234, 72, 231, 0],
-    regional_partner: [170, 573, 576, 0, 566, 428, 468, 142, 462, 0],
-    overseas_manufacturer: [85, 287, 288, 0, 0, 214, 234, 71, 231, 0],
+    domestic_fab: [628, 165, 269, 0, 638, 237, 71, 231, 0, 0],
+    regional_partner: [581, 330, 538, 0, 638, 469, 142, 462, 0, 0],
+    overseas_manufacturer: [403, 165, 269, 0, 0, 235, 71, 231, 0, 0],
   },
 };
 

@@ -288,23 +288,23 @@ function PerformanceHero({ data }: { data: ResultsResponse }) {
     data.totals.totalCost - data.solverBenchmark.totals.totalCost;
 
   return (
-    <Card className="overflow-hidden border-[var(--navy)] bg-[var(--navy)] text-white">
+    <Card className="overflow-hidden border-[var(--navy)]/20">
       <div className="grid gap-0 lg:grid-cols-[1.4fr_1fr]">
         <div className="p-6 sm:p-7">
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--slate)]">
             Overall performance
           </div>
-          <div className="mt-2 text-4xl font-semibold tabular-nums">
+          <div className="mt-2 text-4xl font-semibold tabular-nums text-[var(--navy)]">
             {money(data.totals.totalCost)}
           </div>
-          <div className="mt-3 flex flex-wrap gap-2 text-xs">
-            <span className="rounded-full bg-white/10 px-3 py-1.5">
+          <div className="mt-3 flex flex-wrap gap-2 text-xs text-[var(--slate)]">
+            <span className="rounded-full bg-slate-100 px-3 py-1.5">
               {milpDelta >= 0
                 ? `${money(milpDelta)} above MILP`
                 : `${money(Math.abs(milpDelta))} below MILP`}
             </span>
             {averageDelta !== null && (
-              <span className="rounded-full bg-white/10 px-3 py-1.5">
+              <span className="rounded-full bg-slate-100 px-3 py-1.5">
                 {averageDelta <= 0
                   ? `${money(Math.abs(averageDelta))} below player average`
                   : `${money(averageDelta)} above player average`}
@@ -312,14 +312,14 @@ function PerformanceHero({ data }: { data: ResultsResponse }) {
             )}
           </div>
         </div>
-        <div className="border-t border-white/15 bg-white/[0.06] p-6 lg:border-l lg:border-t-0">
-          <div className="text-xs text-white/60">Your cost rank</div>
-          <div className="mt-1 text-2xl font-semibold">
+        <div className="border-t border-[var(--card-border)] bg-slate-50 p-6 lg:border-l lg:border-t-0">
+          <div className="text-xs text-[var(--slate)]">Your cost rank</div>
+          <div className="mt-1 text-2xl font-semibold text-[var(--navy)]">
             {data.community.costPercentile
               ? `Top ${data.community.costPercentile.topPercent}%`
               : "More runs needed"}
           </div>
-          <div className="mt-2 text-xs leading-relaxed text-white/65">
+          <div className="mt-2 text-xs leading-relaxed text-[var(--slate)]">
             {data.community.costPercentile
               ? `Rank ${data.community.costPercentile.rank} among ${data.community.costPercentile.totalPlayers} completed runs; lower cost ranks higher.`
               : "A percentile appears after another player completes the simulation."}

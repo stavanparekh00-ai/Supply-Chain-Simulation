@@ -27,11 +27,13 @@ export function SupplierOrderPanel({
   quantities,
   onChange,
   readOnly = false,
+  inputIdPrefix = "",
 }: {
   suppliers: SupplierOrderInfo[];
   quantities: Record<string, number | "">;
   onChange: (supplierId: string, value: string) => void;
   readOnly?: boolean;
+  inputIdPrefix?: string;
 }) {
   const numericQty = (supplierId: string) => {
     const value = quantities[supplierId];
@@ -101,14 +103,14 @@ export function SupplierOrderPanel({
 
               <div className="mt-auto rounded-lg border border-white/80 bg-white p-3">
                 <label
-                  htmlFor={`order-${supplier.id}`}
+                  htmlFor={`${inputIdPrefix}order-${supplier.id}`}
                   className="block text-[10px] font-semibold uppercase tracking-wider text-[var(--slate)]"
                 >
                   Order quantity
                 </label>
                 <div className="mt-1.5 flex items-baseline gap-2">
                   <input
-                    id={`order-${supplier.id}`}
+                    id={`${inputIdPrefix}order-${supplier.id}`}
                     type="number"
                     min={0}
                     max={supplier.capacityThisWeek}

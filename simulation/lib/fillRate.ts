@@ -27,7 +27,7 @@ export interface FillRateSummary {
 
 /**
  * Fill rate definitions:
- * - Cumulative: all units shipped / all new customer demand.
+ * - Cumulative: arithmetic mean of all completed weekly fill rates.
  * - Weekly: units shipped / (new demand + backlog entering that week).
  *
  * The weekly denominator includes backlog so a catch-up week cannot report
@@ -80,10 +80,6 @@ export function summarizeFillRate(rows: FillRateStateRow[]): FillRateSummary {
     (sum, row) => sum + row.demand,
     0
   );
-  const cumulativeFillRatePct =
-    cumulativeDemand > 0
-      ? Math.min(100, (cumulativeShipped / cumulativeDemand) * 100)
-      : null;
   const weeklyMean =
     weekly.length > 0
       ? weekly.reduce((sum, row) => sum + row.fillRatePct, 0) / weekly.length
@@ -99,7 +95,7 @@ export function summarizeFillRate(rows: FillRateStateRow[]): FillRateSummary {
   return {
     cumulativeShipped,
     cumulativeDemand,
-    cumulativeFillRatePct,
+    cumulativeFillRatePct: weeklyMean,
     weekly,
     weeklyVariance,
     weeklyStdDev:

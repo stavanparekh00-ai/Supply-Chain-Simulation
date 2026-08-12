@@ -40,6 +40,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
      ORDER BY week ASC, facility_id ASC`,
     [id]
   );
+  const orderHistoryRes = await pool.query(
+    `SELECT week, facility_id, supplier_id, order_quantity
+     FROM decisions
+     WHERE session_id = $1
+     ORDER BY week ASC, facility_id ASC, supplier_id ASC`,
+    [id]
+  );
 
   let cumulativeCost = 0;
   const costByWeek = new Map<number, number>();
@@ -87,6 +94,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       cumulativeFillRatePct: summary?.cumulativeFillRatePct ?? null,
       cumulativeShipped: summary?.cumulativeShipped ?? 0,
       cumulativeDemand: summary?.cumulativeDemand ?? 0,
+      cumulativeFillRateWeeks: summary?.weekly.length ?? 0,
     };
   });
 
@@ -127,6 +135,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     maxInventoryCeiling: data.per_period_cost_parameters.max_inventory_ceiling_units,
     disruptionsThisWeek,
     facilities: facilitiesWithFillRate,
+    orderHistory: orderHistoryRes.rows.map((row) => ({
+      week: Number(row.week),
+      facilityId: String(row.facility_id),
+      supplierId: String(row.supplier_id),
+      quantity: Number(row.order_quantity),
+    })),
     lastCompletedWeek,
     lastOutcomes,
     charts: {

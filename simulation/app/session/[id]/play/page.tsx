@@ -36,6 +36,7 @@ interface FacilityWeekInfo {
   cumulativeFillRatePct: number | null;
   cumulativeShipped: number;
   cumulativeDemand: number;
+  cumulativeFillRateWeeks: number;
   suppliers: SupplierOrderInfo[];
 }
 interface DisruptionEvent {
@@ -50,6 +51,12 @@ interface PeriodInfo {
   maxInventoryCeiling: number;
   disruptionsThisWeek: DisruptionEvent[];
   facilities: FacilityWeekInfo[];
+  orderHistory: {
+    week: number;
+    facilityId: string;
+    supplierId: string;
+    quantity: number;
+  }[];
   lastCompletedWeek: number | null;
   lastOutcomes: Record<
     string,
@@ -102,6 +109,7 @@ export default function PlayPage() {
       ...data,
       lastCompletedWeek: data.lastCompletedWeek ?? null,
       lastOutcomes: data.lastOutcomes ?? {},
+      orderHistory: data.orderHistory ?? [],
     });
     const initial: OrderDraft = {};
     for (const f of data.facilities) {
@@ -166,7 +174,7 @@ export default function PlayPage() {
     return (
       <>
         <AppHeader activeStep="play" sessionId={params.id} unlockedSteps={gate.unlocked} />
-        <PageShell>
+        <PageShell wide>
           <Spinner />
         </PageShell>
       </>
@@ -177,7 +185,7 @@ export default function PlayPage() {
     return (
       <>
         <AppHeader activeStep="play" sessionId={params.id} unlockedSteps={gate.unlocked} />
-        <PageShell>
+        <PageShell wide>
           <p className="text-sm text-red-700">{error}</p>
         </PageShell>
       </>
@@ -187,7 +195,7 @@ export default function PlayPage() {
     return (
       <>
         <AppHeader activeStep="play" sessionId={params.id} unlockedSteps={gate.unlocked} />
-        <PageShell>
+        <PageShell wide>
           <Spinner />
         </PageShell>
       </>
@@ -222,7 +230,7 @@ export default function PlayPage() {
         unlockedSteps={gate.unlocked}
         weekProgress={{ current: period.week, total: period.horizonWeeks }}
       />
-      <PageShell>
+      <PageShell wide>
         <PageHeader title="Place Your Orders" subtitle={`Period ${period.week} of ${period.horizonWeeks}`} />
 
         <div className="mb-6 grid gap-4 lg:grid-cols-2">
@@ -304,55 +312,69 @@ export default function PlayPage() {
                   </span>
                 </div>
 
-                <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                  <MetricCard label="Facility Forecast" value={f.forecast.toLocaleString()} />
-                  <MetricCard label="On-Hand Inventory" value={f.onHandStart.toLocaleString()} />
-                  <MetricCard label="Arriving This Week" value={f.arrivingThisWeek.toLocaleString()} />
-                  <MetricCard label="Backlog" value={f.backlogStart.toLocaleString()} accent={f.backlogStart > 0} />
-                  <MetricCard
-                    label={outcomeWeek !== null ? `Actual Demand · Week ${outcomeWeek}` : "Actual Demand"}
-                    value={last ? last.actualDemand.toLocaleString() : "-"}
-                    sublabel={
-                      demandDelta !== null
-                        ? `${demandDelta >= 0 ? "+" : ""}${demandDelta.toLocaleString()} vs forecast`
-                        : undefined
-                    }
-                  />
-                  <MetricCard
-                    label="Fill Rate"
-                    value={
-                      f.cumulativeFillRatePct === null
-                        ? "-"
-                        : `${f.cumulativeFillRatePct.toFixed(1)}%`
-                    }
-                    sublabel={
-                      f.cumulativeDemand > 0
-                        ? `${f.cumulativeShipped.toLocaleString()} shipped / ${f.cumulativeDemand.toLocaleString()} demand`
-                        : undefined
-                    }
-                    highlight
+                <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+                  <div className="min-w-0">
+                    <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+                      <MetricCard label="Facility Forecast" value={f.forecast.toLocaleString()} />
+                      <MetricCard label="On-Hand Inventory" value={f.onHandStart.toLocaleString()} />
+                      <MetricCard label="Arriving This Week" value={f.arrivingThisWeek.toLocaleString()} />
+                      <MetricCard label="Backlog" value={f.backlogStart.toLocaleString()} accent={f.backlogStart > 0} />
+                      <MetricCard
+                        label={outcomeWeek !== null ? `Actual Demand · Week ${outcomeWeek}` : "Actual Demand"}
+                        value={last ? last.actualDemand.toLocaleString() : "-"}
+                        sublabel={
+                          demandDelta !== null
+                            ? `${demandDelta >= 0 ? "+" : ""}${demandDelta.toLocaleString()} vs forecast`
+                            : undefined
+                        }
+                      />
+                      <MetricCard
+                        label="Cumulative Fill Rate"
+                        value={
+                          f.cumulativeFillRatePct === null
+                            ? "-"
+                            : `${f.cumulativeFillRatePct.toFixed(1)}%`
+                        }
+                        sublabel={
+                          f.cumulativeFillRateWeeks > 0
+                            ? `Average of ${f.cumulativeFillRateWeeks} completed week${f.cumulativeFillRateWeeks === 1 ? "" : "s"}`
+                            : undefined
+                        }
+                        highlight
+                      />
+                    </div>
+
+                    {f.customerForecasts.length > 0 && (
+                      <div className="mb-4 flex flex-wrap gap-2">
+                        {f.customerForecasts.map((customer) => (
+                          <span
+                            key={customer.customerId}
+                            className="rounded border border-[var(--card-border)] bg-slate-50 px-2.5 py-1 text-[11px] text-[var(--slate)]"
+                          >
+                            <span className="font-semibold text-[var(--navy)]">{customer.customerId}</span>{" "}
+                            {customer.customerName}: {customer.forecast.toLocaleString()}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <SupplierOrderPanel
+                      suppliers={f.suppliers}
+                      quantities={orders[f.facilityId] ?? {}}
+                      onChange={(supplierId, value) => setOrder(f.facilityId, supplierId, value)}
+                      inputIdPrefix={`${f.facilityId}-`}
+                    />
+                  </div>
+
+                  <FacilityOrderHistory
+                    facilityId={f.facilityId}
+                    currentWeek={period.week}
+                    history={period.orderHistory.filter(
+                      (row) => row.facilityId === f.facilityId
+                    )}
+                    draft={orders[f.facilityId] ?? {}}
                   />
                 </div>
-
-                {f.customerForecasts.length > 0 && (
-                  <div className="mb-4 flex flex-wrap gap-2">
-                    {f.customerForecasts.map((customer) => (
-                      <span
-                        key={customer.customerId}
-                        className="rounded border border-[var(--card-border)] bg-slate-50 px-2.5 py-1 text-[11px] text-[var(--slate)]"
-                      >
-                        <span className="font-semibold text-[var(--navy)]">{customer.customerId}</span>{" "}
-                        {customer.customerName}: {customer.forecast.toLocaleString()}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                <SupplierOrderPanel
-                  suppliers={f.suppliers}
-                  quantities={orders[f.facilityId] ?? {}}
-                  onChange={(supplierId, value) => setOrder(f.facilityId, supplierId, value)}
-                />
               </Card>
             );
           })}
@@ -379,6 +401,113 @@ export default function PlayPage() {
         </div>
       </PageShell>
     </>
+  );
+}
+
+function FacilityOrderHistory({
+  facilityId,
+  currentWeek,
+  history,
+  draft,
+}: {
+  facilityId: string;
+  currentWeek: number;
+  history: PeriodInfo["orderHistory"];
+  draft: Record<string, number | "">;
+}) {
+  const suppliers = [
+    { id: "domestic_fab", label: "Domestic" },
+    { id: "regional_partner", label: "Regional" },
+    { id: "overseas_manufacturer", label: "Overseas" },
+  ];
+  const submittedWeeks = Array.from(
+    new Set(history.map((row) => row.week))
+  ).sort((a, b) => a - b);
+  const rows = submittedWeeks.map((week) => {
+    const quantities = Object.fromEntries(
+      suppliers.map((supplier) => [
+        supplier.id,
+        history.find(
+          (row) => row.week === week && row.supplierId === supplier.id
+        )?.quantity ?? 0,
+      ])
+    ) as Record<string, number>;
+    return { week, quantities, draft: false };
+  });
+  rows.push({
+    week: currentWeek,
+    quantities: Object.fromEntries(
+      suppliers.map((supplier) => {
+        const value = draft[supplier.id];
+        return [supplier.id, typeof value === "number" ? value : 0];
+      })
+    ) as Record<string, number>,
+    draft: true,
+  });
+
+  return (
+    <aside className="self-start overflow-hidden rounded-xl border border-[var(--card-border)] bg-slate-50/70 xl:sticky xl:top-24">
+      <div className="border-b border-[var(--card-border)] bg-white px-4 py-3">
+        <h3 className="text-sm font-semibold text-[var(--navy)]">
+          {facilityId} order history
+        </h3>
+        <p className="mt-0.5 text-[11px] text-[var(--slate)]">
+          Submitted weeks plus your current draft
+        </p>
+      </div>
+      <div className="thin-scrollbar overflow-x-auto">
+        <table className="w-full min-w-[340px] text-xs">
+          <thead>
+            <tr className="text-left text-[10px] font-semibold uppercase tracking-wider text-[var(--slate)]">
+              <th className="px-3 py-2.5">Week</th>
+              {suppliers.map((supplier) => (
+                <th key={supplier.id} className="px-2 py-2.5 text-right">
+                  {supplier.label}
+                </th>
+              ))}
+              <th className="px-3 py-2.5 text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const total = suppliers.reduce(
+                (sum, supplier) => sum + row.quantities[supplier.id],
+                0
+              );
+              return (
+                <tr
+                  key={`${row.week}-${row.draft ? "draft" : "submitted"}`}
+                  className={[
+                    "border-t border-[var(--card-border)] tabular-nums",
+                    row.draft ? "bg-[var(--navy)]/[0.05]" : "bg-white/70",
+                  ].join(" ")}
+                >
+                  <td className="whitespace-nowrap px-3 py-2.5 font-medium text-[var(--navy)]">
+                    W{row.week}
+                    {row.draft && (
+                      <span className="ml-1 rounded bg-[var(--navy)]/10 px-1 py-0.5 text-[9px] uppercase text-[var(--navy)]">
+                        Draft
+                      </span>
+                    )}
+                  </td>
+                  {suppliers.map((supplier) => (
+                    <td
+                      key={supplier.id}
+                      className="px-2 py-2.5 text-right text-[var(--foreground)]"
+                    >
+                      {row.quantities[supplier.id].toLocaleString()}
+                    </td>
+                  ))}
+                  <td className="px-3 py-2.5 text-right font-semibold text-[var(--navy)]">
+                    {total.toLocaleString()}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </aside>
   );
 }
 

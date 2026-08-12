@@ -10,10 +10,24 @@ export function Card({ children, className = "" }: { children: ReactNode; classN
   );
 }
 
-export function PageShell({ children, narrow = false }: { children: ReactNode; narrow?: boolean }) {
+export function PageShell({
+  children,
+  narrow = false,
+  wide = false,
+}: {
+  children: ReactNode;
+  narrow?: boolean;
+  wide?: boolean;
+}) {
   return (
     <div className="min-h-screen pb-16">
-      <div className={`mx-auto px-4 pt-8 ${narrow ? "max-w-2xl" : "max-w-5xl"}`}>{children}</div>
+      <div
+        className={`mx-auto px-4 pt-8 ${
+          narrow ? "max-w-2xl" : wide ? "max-w-7xl" : "max-w-5xl"
+        }`}
+      >
+        {children}
+      </div>
     </div>
   );
 }

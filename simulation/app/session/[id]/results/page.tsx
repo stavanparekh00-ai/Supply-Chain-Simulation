@@ -227,7 +227,7 @@ export default function ResultsPage() {
 
         <PerformanceHero data={data} />
 
-        <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-6">
           <MetricCard
             label="Total Cost"
             value={money(data.totals.totalCost)}
@@ -250,29 +250,6 @@ export default function ResultsPage() {
             label="Forecast MAE"
             value={Math.round(data.forecastAccuracy.mae).toLocaleString()}
             sublabel={data.forecastAccuracy.methodName}
-          />
-          <MetricCard
-            label="Cumulative Fill Rate"
-            value={
-              data.fillRate.cumulativeFillRatePct === null
-                ? "—"
-                : `${data.fillRate.cumulativeFillRatePct.toFixed(1)}%`
-            }
-            sublabel={`${data.fillRate.cumulativeShipped.toLocaleString()} shipped / ${data.fillRate.cumulativeDemand.toLocaleString()} demand`}
-            highlight
-          />
-          <MetricCard
-            label="Weekly Fill Rate Variance"
-            value={
-              data.fillRate.weeklyVariance === null
-                ? "—"
-                : `${data.fillRate.weeklyVariance.toFixed(1)} pp²`
-            }
-            sublabel={
-              data.fillRate.weeklyStdDev === null
-                ? undefined
-                : `${data.fillRate.weeklyStdDev.toFixed(1)} pp standard deviation`
-            }
           />
           <MetricCard
             label="Cost Standing"

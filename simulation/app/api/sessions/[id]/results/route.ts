@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
 import { loadScenarioData } from "@/lib/scenarioData";
 import { ForecastingMethodId } from "@/lib/forecasting";
-import { scoreForecastAccuracy } from "@/lib/forecastAccuracy";
+import {
+  scoreForecastAccuracy,
+  scorePerfectForesightAccuracy,
+} from "@/lib/forecastAccuracy";
 import { buildMilpBenchmark } from "@/lib/milpBenchmark";
 import {
   FillRateStateRow,
@@ -45,6 +48,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const openedFacilities: string[] = session.opened_facilities ?? [];
   const methodId = session.forecasting_method_id as ForecastingMethodId;
   const forecastAccuracy = scoreForecastAccuracy(data, openedFacilities, methodId, periodStateRes.rows);
+  const milpForecastAccuracy = scorePerfectForesightAccuracy(periodStateRes.rows);
 
   const completedStateRes = await pool.query(
     `SELECT s.id AS session_id, ps.week, ps.facility_id, ps.on_hand_start,
@@ -251,6 +255,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         averageMae: peerAverageMae,
         averageMse: peerAverageMse,
         averageRmse: peerAverageRmse,
+      },
+      milp: {
+        methodId: milpForecastAccuracy.methodId,
+        methodName: milpForecastAccuracy.methodName,
+        mae: milpForecastAccuracy.mae,
+        mse: milpForecastAccuracy.mse,
+        rmse: milpForecastAccuracy.rmse,
+        byWeek: milpForecastAccuracy.byWeek,
       },
     },
     solverBenchmark: milpBenchmark,

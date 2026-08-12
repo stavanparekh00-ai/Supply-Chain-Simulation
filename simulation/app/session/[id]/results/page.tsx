@@ -116,6 +116,19 @@ interface ResultsResponse {
       averageMse: number | null;
       averageRmse: number | null;
     };
+    milp: {
+      methodId: string;
+      methodName: string;
+      mae: number;
+      mse: number;
+      rmse: number;
+      byWeek: {
+        week: number;
+        forecast: number;
+        actual: number;
+        absError: number;
+      }[];
+    };
   };
   solverBenchmark: {
     status: "verified_precomputed";
@@ -146,6 +159,7 @@ interface ResultsResponse {
 const PLAYER_COLOR = "#1e3a5f";
 const MILP_COLOR = "#b45309";
 const COMMUNITY_COLOR = "#0f766e";
+const ACTUAL_COLOR = "#64748b";
 const GRID_COLOR = "#e5e8ee";
 const chartAxisStyle = { fontSize: 11, fill: "#64748b" };
 const tooltipStyle = {
@@ -663,7 +677,11 @@ function ResultsCharts({
         </LineChart>
       </ChartCard>
 
-      <ForecastCharts data={data} showCommunity={showCommunity} />
+      <ForecastCharts
+        data={data}
+        showMilp={showMilp}
+        showCommunity={showCommunity}
+      />
       <SupplierOrdersChart data={data} />
     </div>
   );
@@ -722,20 +740,28 @@ function ComparisonLines({
 
 function ForecastCharts({
   data,
+  showMilp,
   showCommunity,
 }: {
   data: ResultsResponse;
+  showMilp: boolean;
   showCommunity: boolean;
 }) {
+  const milpMethodLabel = `MILP · ${data.forecastAccuracy.milp.methodName}`;
+  const milpByWeek = new Map(
+    data.forecastAccuracy.milp.byWeek.map((row) => [row.week, row.forecast])
+  );
   const weekly = data.forecastAccuracy.byWeek.map((row) => ({
     week: `W${row.week}`,
     Forecast: row.forecast,
     Actual: row.actual,
+    [milpMethodLabel]: milpByWeek.get(row.week) ?? null,
   }));
   const errors = [
     {
       metric: "MAE",
       You: Math.round(data.forecastAccuracy.mae),
+      MILP: Math.round(data.forecastAccuracy.milp.mae),
       "Same-method average":
         data.forecastAccuracy.peers.averageMae === null
           ? null
@@ -744,6 +770,7 @@ function ForecastCharts({
     {
       metric: "RMSE",
       You: Math.round(data.forecastAccuracy.rmse),
+      MILP: Math.round(data.forecastAccuracy.milp.rmse),
       "Same-method average":
         data.forecastAccuracy.peers.averageRmse === null
           ? null
@@ -827,10 +854,20 @@ function ForecastCharts({
                 <Line
                   type="monotone"
                   dataKey="Actual"
-                  stroke={MILP_COLOR}
+                  stroke={ACTUAL_COLOR}
                   strokeWidth={2.5}
+                  strokeDasharray="4 3"
                   dot={{ r: 3 }}
                 />
+                {showMilp && (
+                  <Line
+                    type="monotone"
+                    dataKey={milpMethodLabel}
+                    stroke={MILP_COLOR}
+                    strokeWidth={2.5}
+                    dot={{ r: 3 }}
+                  />
+                )}
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -869,6 +906,13 @@ function ForecastCharts({
                   fill={PLAYER_COLOR}
                   radius={[4, 4, 0, 0]}
                 />
+                {showMilp && (
+                  <Bar
+                    dataKey="MILP"
+                    fill={MILP_COLOR}
+                    radius={[4, 4, 0, 0]}
+                  />
+                )}
                 {showCommunity &&
                   data.forecastAccuracy.peers.completedWithSameMethod > 0 && (
                     <Bar
@@ -881,9 +925,10 @@ function ForecastCharts({
             </ResponsiveContainer>
           </div>
           <p className="mt-2 text-[11px] leading-relaxed text-[var(--slate-light)]">
-            Lower error is better. The MILP benchmark uses realized scenario
-            demand, so forecast error is compared only with players using the
-            same method.
+            Lower error is better. The MILP benchmark plans with{" "}
+            {data.forecastAccuracy.milp.methodName.toLowerCase()} of realized
+            demand (MAE/RMSE = 0). Same-method average compares peers who chose
+            your forecasting method.
           </p>
         </div>
       </div>

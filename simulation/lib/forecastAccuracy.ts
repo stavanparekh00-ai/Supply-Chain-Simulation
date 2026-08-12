@@ -94,3 +94,51 @@ export function scoreForecastAccuracy(
     points,
   };
 }
+
+/**
+ * Score the MILP / Oracle benchmark: it plans with perfect foresight of
+ * realized facility demand, so forecast equals actual and error is zero.
+ * Uses the same facility-weeks as the player for an apples-to-apples chart.
+ */
+export function scorePerfectForesightAccuracy(
+  periodRows: { week: number | string; facility_id: string; actual_demand: number | string }[]
+): ForecastAccuracySummary {
+  const points: ForecastAccuracyPoint[] = periodRows.map((row) => {
+    const actual = Number(row.actual_demand);
+    return {
+      week: Number(row.week),
+      facilityId: String(row.facility_id),
+      forecast: actual,
+      actual,
+      error: 0,
+      absError: 0,
+      squaredError: 0,
+    };
+  });
+
+  const n = points.length;
+  const weeks = Array.from(new Set(points.map((p) => p.week))).sort((a, b) => a - b);
+  const byWeek = weeks.map((week) => {
+    const weekPoints = points.filter((p) => p.week === week);
+    const actual = weekPoints.reduce((sum, p) => sum + p.actual, 0);
+    return {
+      week,
+      forecast: actual,
+      actual,
+      absError: 0,
+    };
+  });
+
+  return {
+    methodId: "perfect_foresight",
+    methodName: "Perfect foresight",
+    observations: n,
+    mae: 0,
+    mse: 0,
+    rmse: 0,
+    mapePct: n === 0 ? null : 0,
+    bias: 0,
+    byWeek,
+    points,
+  };
+}

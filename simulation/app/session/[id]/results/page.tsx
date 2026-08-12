@@ -93,7 +93,7 @@ interface ResultsResponse {
     costPercentile: {
       rank: number;
       totalPlayers: number;
-      topPercent: number;
+      betterThanPercent: number;
     } | null;
   };
   forecastAccuracy: {
@@ -267,13 +267,17 @@ export default function ResultsPage() {
             sublabel={data.forecastAccuracy.methodName}
           />
           <MetricCard
-            label="Rank"
+            label="Percentile"
             value={
               data.community.costPercentile
-                ? `${data.community.costPercentile.rank} out of ${data.community.costPercentile.totalPlayers}`
+                ? `Better than ${data.community.costPercentile.betterThanPercent}%`
                 : "—"
             }
-            sublabel="Overall performance"
+            sublabel={
+              data.community.costPercentile
+                ? `Rank ${data.community.costPercentile.rank} of ${data.community.costPercentile.totalPlayers}`
+                : "Needs at least two completed runs"
+            }
           />
         </div>
 
@@ -341,12 +345,22 @@ function PerformanceHero({ data }: { data: ResultsResponse }) {
             )}
           </div>
         </div>
-        <div className="border-t border-[var(--card-border)] bg-slate-50 p-6 lg:border-l lg:border-t-0 flex items-center">
-          <div className="text-lg font-semibold leading-snug text-[var(--navy)] sm:text-xl">
-            {data.community.costPercentile
-              ? `You ranked ${data.community.costPercentile.rank} out of ${data.community.costPercentile.totalPlayers} based on overall performance`
-              : "Rank available after another completed run"}
-          </div>
+        <div className="border-t border-[var(--card-border)] bg-slate-50 p-6 lg:border-l lg:border-t-0 flex flex-col justify-center">
+          {data.community.costPercentile ? (
+            <>
+              <div className="text-3xl font-semibold tabular-nums text-[var(--navy)]">
+                Better than {data.community.costPercentile.betterThanPercent}%
+              </div>
+              <div className="mt-2 text-sm text-[var(--slate)]">
+                Rank {data.community.costPercentile.rank} of{" "}
+                {data.community.costPercentile.totalPlayers} by total cost
+              </div>
+            </>
+          ) : (
+            <div className="text-sm text-[var(--slate)]">
+              Percentile available after another completed run
+            </div>
+          )}
         </div>
       </div>
     </Card>

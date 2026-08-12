@@ -174,9 +174,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       : {
           rank: costRank,
           totalPlayers: rankedRuns.length,
-          topPercent: Math.max(
-            1,
-            Math.ceil((costRank / rankedRuns.length) * 100)
+          // Share of completed runs with a worse (higher) total cost.
+          betterThanPercent: Math.round(
+            ((rankedRuns.length - costRank) / rankedRuns.length) * 100
           ),
         };
 

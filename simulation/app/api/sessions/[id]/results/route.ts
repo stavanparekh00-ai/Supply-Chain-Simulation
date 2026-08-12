@@ -4,6 +4,10 @@ import { loadScenarioData } from "@/lib/scenarioData";
 import { ForecastingMethodId } from "@/lib/forecasting";
 import { scoreForecastAccuracy } from "@/lib/forecastAccuracy";
 import { buildMilpBenchmark } from "@/lib/milpBenchmark";
+import {
+  FillRateStateRow,
+  summarizeFillRate,
+} from "@/lib/fillRate";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -37,12 +41,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const totalBackorderedUnits = periodStateRes.rows.reduce((s, r) => s + Number(r.backlog), 0);
   const data = loadScenarioData();
   const milpBenchmark = buildMilpBenchmark(data);
+  const playerFillRate = summarizeFillRate(periodStateRes.rows);
   const openedFacilities: string[] = session.opened_facilities ?? [];
   const methodId = session.forecasting_method_id as ForecastingMethodId;
   const forecastAccuracy = scoreForecastAccuracy(data, openedFacilities, methodId, periodStateRes.rows);
 
   const completedStateRes = await pool.query(
-    `SELECT s.id AS session_id, ps.week, ps.on_hand_end, ps.backlog,
+    `SELECT s.id AS session_id, ps.week, ps.facility_id, ps.on_hand_start,
+            ps.arriving, ps.actual_demand, ps.on_hand_end, ps.backlog,
             ps.procurement_cost, ps.holding_cost, ps.backorder_cost
      FROM sessions s
      JOIN period_state ps ON ps.session_id = s.id
@@ -63,6 +69,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     backorderCost: number;
     totalCost: number;
     byWeek: Map<number, WeeklySummary>;
+    fillRows: FillRateStateRow[];
   };
 
   const completedRuns = new Map<string, RunSummary>();
@@ -76,6 +83,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         backorderCost: 0,
         totalCost: 0,
         byWeek: new Map<number, WeeklySummary>(),
+        fillRows: [],
       };
     const week = Number(row.week);
     const weekly =
@@ -99,6 +107,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     run.holdingCost += holding;
     run.backorderCost += backorder;
     run.totalCost += procurement + holding + backorder;
+    run.fillRows.push(row);
     run.byWeek.set(week, weekly);
     completedRuns.set(sessionId, run);
   }
@@ -107,6 +116,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     .filter(([sessionId]) => sessionId !== id)
     .map(([, run]) => run);
   const peerCountAll = peerRuns.length;
+  const peerFillRates = peerRuns.map((run) =>
+    summarizeFillRate(run.fillRows)
+  );
   const average = (values: number[]) =>
     values.length === 0
       ? null
@@ -135,6 +147,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         cumulativeCost: average(cumulativeSamples),
         onHand: average(samples.map((row) => row.onHand)),
         backlog: average(samples.map((row) => row.backlog)),
+        fillRatePct: average(
+          peerFillRates
+            .map(
+              (summary) =>
+                summary.weekly.find((row) => row.week === week)?.fillRatePct
+            )
+            .filter((value): value is number => value !== undefined)
+        ),
       };
     }
   );
@@ -204,6 +224,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       totalCost,
       totalBackorderedUnits,
     },
+    fillRate: playerFillRate,
     community: {
       completedPlayers: peerCountAll,
       averageCost: average(peerRuns.map((run) => run.totalCost)),

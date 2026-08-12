@@ -33,6 +33,9 @@ interface FacilityWeekInfo {
   arrivingThisWeek: number;
   maxInventoryCeiling: number;
   minInventoryFloor: number;
+  cumulativeFillRatePct: number | null;
+  cumulativeShipped: number;
+  cumulativeDemand: number;
   suppliers: SupplierOrderInfo[];
 }
 interface DisruptionEvent {
@@ -59,7 +62,7 @@ interface PeriodInfo {
   };
   performance: {
     cumulativeCost: number;
-    fillRatePct: number;
+    fillRatePct: number | null;
     currentBacklog: number;
     endingInventory: number;
     cumulativeCostByWeek: { week: number; cost: number }[];
@@ -317,10 +320,14 @@ export default function PlayPage() {
                   />
                   <MetricCard
                     label="Fill Rate"
-                    value={last ? `${last.fillRatePct.toFixed(1)}%` : "-"}
+                    value={
+                      f.cumulativeFillRatePct === null
+                        ? "-"
+                        : `${f.cumulativeFillRatePct.toFixed(1)}%`
+                    }
                     sublabel={
-                      last && outcomeWeek !== null
-                        ? `Week ${outcomeWeek} · served ${last.served.toLocaleString()}`
+                      f.cumulativeDemand > 0
+                        ? `${f.cumulativeShipped.toLocaleString()} shipped / ${f.cumulativeDemand.toLocaleString()} demand`
                         : undefined
                     }
                     highlight

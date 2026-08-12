@@ -3,6 +3,10 @@ import { getPool } from "@/lib/db";
 import { loadScenarioData, disruptionsInWeek } from "@/lib/scenarioData";
 import { buildFacilityWeekInfo, forecastFacilityDemand } from "@/lib/gameEngine";
 import { ForecastingMethodId } from "@/lib/forecasting";
+import {
+  summarizeFacilityFillRates,
+  summarizeFillRate,
+} from "@/lib/fillRate";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -37,31 +41,19 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     [id]
   );
 
-  const previousBacklog = new Map<string, number>();
-  let totalDemand = 0;
-  let totalFulfilled = 0;
   let cumulativeCost = 0;
   const costByWeek = new Map<number, number>();
   const demandByWeek = new Map<number, number>();
   const forecastByWeek = new Map<number, number>();
 
   for (const row of stateRes.rows) {
-    const facilityId = String(row.facility_id);
     const periodWeek = Number(row.week);
-    const backlogStart = previousBacklog.get(facilityId) ?? 0;
-    const available = Number(row.on_hand_start) + Number(row.arriving);
-    const oldBacklogRemaining = Math.max(0, backlogStart - available);
-    const newlyUnfilled = Math.max(0, Number(row.backlog) - oldBacklogRemaining);
-    const fulfilled = Math.max(0, Number(row.actual_demand) - newlyUnfilled);
     const rowCost =
       Number(row.procurement_cost) + Number(row.holding_cost) + Number(row.backorder_cost);
 
-    totalDemand += Number(row.actual_demand);
-    totalFulfilled += fulfilled;
     cumulativeCost += rowCost;
     costByWeek.set(periodWeek, (costByWeek.get(periodWeek) ?? 0) + rowCost);
     demandByWeek.set(periodWeek, (demandByWeek.get(periodWeek) ?? 0) + Number(row.actual_demand));
-    previousBacklog.set(facilityId, Number(row.backlog));
   }
 
   for (const periodWeek of demandByWeek.keys()) {
@@ -86,6 +78,17 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const latestStates = stateRes.rows.filter((r) => Number(r.week) === week - 1);
   const currentWeekForecast = facilities.reduce((sum, f) => sum + f.forecast, 0);
+  const fillRate = summarizeFillRate(stateRes.rows);
+  const facilityFillRates = summarizeFacilityFillRates(stateRes.rows);
+  const facilitiesWithFillRate = facilities.map((facility) => {
+    const summary = facilityFillRates.get(facility.facilityId);
+    return {
+      ...facility,
+      cumulativeFillRatePct: summary?.cumulativeFillRatePct ?? null,
+      cumulativeShipped: summary?.cumulativeShipped ?? 0,
+      cumulativeDemand: summary?.cumulativeDemand ?? 0,
+    };
+  });
 
   // Most recently completed week outcomes (for facility KPI slots on the orders page).
   const lastCompletedWeek = week > 1 ? week - 1 : null;
@@ -95,19 +98,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   > = {};
   if (lastCompletedWeek !== null) {
     const lastRows = stateRes.rows.filter((r) => Number(r.week) === lastCompletedWeek);
-    const backlogBeforeLast = new Map<string, number>();
-    for (const row of stateRes.rows) {
-      if (Number(row.week) >= lastCompletedWeek) break;
-      backlogBeforeLast.set(String(row.facility_id), Number(row.backlog));
-    }
     for (const row of lastRows) {
       const facilityId = String(row.facility_id);
       const actualDemand = Number(row.actual_demand);
-      const backlogStart = backlogBeforeLast.get(facilityId) ?? 0;
-      const available = Number(row.on_hand_start) + Number(row.arriving);
-      const oldBacklogRemaining = Math.max(0, backlogStart - available);
-      const newlyUnfilled = Math.max(0, Number(row.backlog) - oldBacklogRemaining);
-      const served = Math.max(0, actualDemand - newlyUnfilled);
+      const weeklyFillRate = facilityFillRates
+        .get(facilityId)
+        ?.weekly.find((entry) => entry.week === lastCompletedWeek);
       const forecast = forecastFacilityDemand(
         data,
         openedFacilities,
@@ -117,9 +113,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       ).forecast;
       lastOutcomes[facilityId] = {
         actualDemand,
-        served,
+        served: weeklyFillRate?.shipped ?? 0,
         forecast,
-        fillRatePct: actualDemand > 0 ? (served / actualDemand) * 100 : 100,
+        fillRatePct: weeklyFillRate?.fillRatePct ?? 100,
       };
     }
   }
@@ -130,7 +126,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     minInventoryFloor: data.per_period_cost_parameters.min_inventory_floor_units,
     maxInventoryCeiling: data.per_period_cost_parameters.max_inventory_ceiling_units,
     disruptionsThisWeek,
-    facilities,
+    facilities: facilitiesWithFillRate,
     lastCompletedWeek,
     lastOutcomes,
     charts: {
@@ -140,7 +136,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     },
     performance: {
       cumulativeCost: Math.round(cumulativeCost),
-      fillRatePct: totalDemand > 0 ? (totalFulfilled / totalDemand) * 100 : 100,
+      fillRatePct: fillRate.cumulativeFillRatePct,
       currentBacklog: latestStates.reduce((sum, r) => sum + Number(r.backlog), 0),
       endingInventory: latestStates.reduce((sum, r) => sum + Number(r.on_hand_end), 0),
       cumulativeCostByWeek,

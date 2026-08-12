@@ -52,6 +52,9 @@ export interface BenchmarkWeek {
   cumulativeCost: number;
   onHand: number;
   backlog: number;
+  shipped: number;
+  demand: number;
+  fillRatePct: number;
 }
 
 export interface MilpBenchmark {
@@ -90,6 +93,8 @@ export function buildMilpBenchmark(data: ScenarioData): MilpBenchmark {
     let backorderCost = 0;
     let onHand = 0;
     let backlog = 0;
+    let shipped = 0;
+    let demand = 0;
 
     const tariff = disruptionsInWeek(data, week).find(
       (event) => event.type === "tariff_spike"
@@ -118,17 +123,18 @@ export function buildMilpBenchmark(data: ScenarioData): MilpBenchmark {
         leadTimeBySupplier
       );
       const previous = state.get(facility)!;
+      const actualDemand = facilityActualDemand(
+        data,
+        [...FACILITIES],
+        facility,
+        week
+      );
       const result = runRecursion({
         onHandStart: previous.onHand,
         backlogStart: previous.backlog,
         arriving: arrivals.arriving,
         arrivingOrdered: arrivals.ordered,
-        actualDemand: facilityActualDemand(
-          data,
-          [...FACILITIES],
-          facility,
-          week
-        ),
+        actualDemand,
         thisWeeksOrders,
         holdingCostPerUnit:
           data.per_period_cost_parameters.holding_cost_per_unit_per_week,
@@ -145,6 +151,8 @@ export function buildMilpBenchmark(data: ScenarioData): MilpBenchmark {
       backorderCost += result.backorderCost;
       onHand += result.onHandEnd;
       backlog += result.backlogEnd;
+      shipped += result.backlogServed + result.newServed;
+      demand += actualDemand;
     }
 
     const totalCost = procurementCost + holdingCost + backorderCost;
@@ -158,6 +166,9 @@ export function buildMilpBenchmark(data: ScenarioData): MilpBenchmark {
       cumulativeCost,
       onHand,
       backlog,
+      shipped,
+      demand,
+      fillRatePct: demand > 0 ? Math.min(100, (shipped / demand) * 100) : 100,
     });
   }
 

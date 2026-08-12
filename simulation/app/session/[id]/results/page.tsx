@@ -48,6 +48,7 @@ interface ComparisonWeek {
   cumulativeCost: number | null;
   onHand: number | null;
   backlog: number | null;
+  fillRatePct: number | null;
 }
 
 interface ResultsResponse {
@@ -64,6 +65,20 @@ interface ResultsResponse {
     totalBackorderCost: number;
     totalCost: number;
     totalBackorderedUnits: number;
+  };
+  fillRate: {
+    cumulativeShipped: number;
+    cumulativeDemand: number;
+    cumulativeFillRatePct: number | null;
+    weekly: {
+      week: number;
+      shipped: number;
+      demand: number;
+      due: number;
+      fillRatePct: number;
+    }[];
+    weeklyVariance: number | null;
+    weeklyStdDev: number | null;
   };
   community: {
     completedPlayers: number;
@@ -121,6 +136,9 @@ interface ResultsResponse {
       cumulativeCost: number;
       onHand: number;
       backlog: number;
+      shipped: number;
+      demand: number;
+      fillRatePct: number;
     }[];
   };
 }
@@ -209,7 +227,7 @@ export default function ResultsPage() {
 
         <PerformanceHero data={data} />
 
-        <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-6">
+        <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <MetricCard
             label="Total Cost"
             value={money(data.totals.totalCost)}
@@ -232,6 +250,29 @@ export default function ResultsPage() {
             label="Forecast MAE"
             value={Math.round(data.forecastAccuracy.mae).toLocaleString()}
             sublabel={data.forecastAccuracy.methodName}
+          />
+          <MetricCard
+            label="Cumulative Fill Rate"
+            value={
+              data.fillRate.cumulativeFillRatePct === null
+                ? "—"
+                : `${data.fillRate.cumulativeFillRatePct.toFixed(1)}%`
+            }
+            sublabel={`${data.fillRate.cumulativeShipped.toLocaleString()} shipped / ${data.fillRate.cumulativeDemand.toLocaleString()} demand`}
+            highlight
+          />
+          <MetricCard
+            label="Weekly Fill Rate Variance"
+            value={
+              data.fillRate.weeklyVariance === null
+                ? "—"
+                : `${data.fillRate.weeklyVariance.toFixed(1)} pp²`
+            }
+            sublabel={
+              data.fillRate.weeklyStdDev === null
+                ? undefined
+                : `${data.fillRate.weeklyStdDev.toFixed(1)} pp standard deviation`
+            }
           />
           <MetricCard
             label="Cost Standing"
@@ -602,6 +643,48 @@ function ResultsCharts({
           </LineChart>
         </ChartCard>
       </div>
+
+      <ChartCard
+        title="Weekly fill rate"
+        subtitle="Units shipped divided by demand due each week; cumulative fill rate is shown above"
+      >
+        <LineChart
+          data={datasets.byWeek}
+          margin={{ top: 8, right: 10, left: 0, bottom: 0 }}
+        >
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke={GRID_COLOR}
+            vertical={false}
+          />
+          <XAxis
+            dataKey="week"
+            tick={chartAxisStyle}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis
+            domain={[0, 100]}
+            tick={chartAxisStyle}
+            tickFormatter={(value) => `${value}%`}
+            axisLine={false}
+            tickLine={false}
+            width={44}
+          />
+          <Tooltip
+            formatter={(value) => `${Number(value).toFixed(1)}%`}
+            contentStyle={tooltipStyle}
+          />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <ComparisonLines
+            showMilp={showMilp}
+            showCommunity={showCommunity}
+            playerKey="playerFillRate"
+            milpKey="milpFillRate"
+            communityKey="communityFillRate"
+          />
+        </LineChart>
+      </ChartCard>
 
       <ForecastCharts data={data} showCommunity={showCommunity} />
       <SupplierOrdersChart data={data} />
@@ -987,6 +1070,9 @@ function buildChartData(data: ResultsResponse) {
     playerByWeek.set(week, current);
   }
 
+  const playerFillByWeek = new Map(
+    data.fillRate.weekly.map((row) => [row.week, row.fillRatePct])
+  );
   let playerCumulative = 0;
   const byWeek = Array.from(
     { length: data.solverBenchmark.byWeek.length },
@@ -1015,6 +1101,9 @@ function buildChartData(data: ResultsResponse) {
         playerBacklog: player.backlog,
         milpBacklog: milp?.backlog ?? null,
         communityBacklog: communityWeek?.backlog ?? null,
+        playerFillRate: playerFillByWeek.get(week) ?? null,
+        milpFillRate: milp?.fillRatePct ?? null,
+        communityFillRate: communityWeek?.fillRatePct ?? null,
       };
     }
   );

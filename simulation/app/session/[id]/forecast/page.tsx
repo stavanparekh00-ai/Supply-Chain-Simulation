@@ -2,10 +2,23 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { PageShell, PageHeader, StepIndicator, Card, PrimaryButton, Spinner } from "@/components/ui";
 import { AppHeader } from "@/components/AppHeader";
 import { useSessionGate } from "@/hooks/useSessionGate";
+import {
+  computeForecast,
+  ForecastingMethodId,
+} from "@/lib/forecasting";
 
 interface Customer {
   id: string;
@@ -14,7 +27,7 @@ interface Customer {
   historical_demand_last_8_weeks: number[];
 }
 interface ForecastingMethod {
-  id: string;
+  id: ForecastingMethodId;
   name: string;
   description: string;
 }
@@ -28,11 +41,16 @@ export default function ForecastSetupPage() {
   const params = useParams<{ id: string }>();
   const gate = useSessionGate(params.id, "forecast");
   const [scenario, setScenario] = useState<ScenarioPublic | null>(null);
-  const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+  const [selectedMethod, setSelectedMethod] =
+    useState<ForecastingMethodId | null>(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("all");
   const [submitting, setSubmitting] = useState(false);
 
-  const locked = Boolean(gate.session?.forecasting_method_id);
+  const lockedMethod = gate.session?.forecasting_method_id as
+    | ForecastingMethodId
+    | undefined;
+  const locked = Boolean(lockedMethod);
+  const activeMethod = lockedMethod ?? selectedMethod;
 
   useEffect(() => {
     fetch("/api/scenario")
@@ -42,30 +60,60 @@ export default function ForecastSetupPage() {
       });
   }, []);
 
-  useEffect(() => {
-    if (gate.session?.forecasting_method_id) {
-      setSelectedMethod(gate.session.forecasting_method_id);
-    }
-  }, [gate.session]);
   const chartData = useMemo(() => {
     if (!scenario) return [];
-    return Array.from({ length: 8 }, (_, i) => {
-      if (selectedCustomerId === "all") {
-        return {
-          week: `W-${8 - i}`,
-          demand: scenario.customers.reduce((sum, c) => sum + c.historical_demand_last_8_weeks[i], 0),
-        };
-      }
-      const customer = scenario.customers.find((c) => c.id === selectedCustomerId);
+    const customers =
+      selectedCustomerId === "all"
+        ? scenario.customers
+        : scenario.customers.filter(
+            (customer) => customer.id === selectedCustomerId
+          );
+
+    const historicalRows = Array.from({ length: 8 }, (_, index) => {
+      const demand = customers.reduce(
+        (sum, customer) =>
+          sum + customer.historical_demand_last_8_weeks[index],
+        0
+      );
+      const forecast =
+        activeMethod && index > 0
+          ? customers.reduce(
+              (sum, customer) =>
+                sum +
+                computeForecast(
+                  activeMethod,
+                  customer.historical_demand_last_8_weeks.slice(0, index)
+                ),
+              0
+            )
+          : null;
       return {
-        week: `W-${8 - i}`,
-        demand: customer?.historical_demand_last_8_weeks[i] ?? 0,
+        week: `W-${8 - index}`,
+        demand,
+        forecast,
       };
     });
-  }, [scenario, selectedCustomerId]);
+
+    const nextForecast = activeMethod
+      ? customers.reduce(
+          (sum, customer) =>
+            sum +
+            computeForecast(
+              activeMethod,
+              customer.historical_demand_last_8_weeks
+            ),
+          0
+        )
+      : null;
+
+    return [
+      ...historicalRows,
+      { week: "Next", demand: null, forecast: nextForecast },
+    ];
+  }, [scenario, selectedCustomerId, activeMethod]);
 
   async function handleBegin() {
-    if (!selectedMethod) return;
+    if (!activeMethod) return;
     if (locked) {
       router.replace(`/session/${params.id}/play`);
       return;
@@ -74,7 +122,7 @@ export default function ForecastSetupPage() {
     const res = await fetch(`/api/sessions/${params.id}/forecast-method`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ methodId: selectedMethod }),
+      body: JSON.stringify({ methodId: activeMethod }),
     });
     if (!res.ok) {
       setSubmitting(false);
@@ -95,6 +143,10 @@ export default function ForecastSetupPage() {
   }
   const activeCustomer =
     selectedCustomerId === "all" ? null : scenario.customers.find((c) => c.id === selectedCustomerId);
+  const activeMethodDetails = scenario.forecasting_methods_menu.find(
+    (method) => method.id === activeMethod
+  );
+  const nextForecast = chartData.at(-1)?.forecast;
 
   return (
     <>
@@ -112,9 +164,12 @@ export default function ForecastSetupPage() {
 
         <Card className="mb-6 overflow-hidden">
           <div className="border-b border-[var(--card-border)] px-5 py-4">
-            <h2 className="text-sm font-semibold text-[var(--navy)]">Historical demand (last 8 weeks)</h2>
+            <h2 className="text-sm font-semibold text-[var(--navy)]">
+              Historical demand &amp; forecast preview
+            </h2>
             <p className="mt-1 text-xs text-[var(--slate)]">
-              View network total, or pick one customer at a time.
+              View the network total or one customer. Select a method below
+              to plot its rolling forecast.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <HistoryTab
@@ -133,24 +188,62 @@ export default function ForecastSetupPage() {
             </div>
           </div>
 
-          <div className="px-5 pt-4 pb-2">
-            <div className="mb-2 text-xs text-[var(--slate)]">
-              {activeCustomer
-                ? `${activeCustomer.id} · ${activeCustomer.name} (baseline ${activeCustomer.weekly_demand.toLocaleString()}/wk)`
-                : "Combined demand across all six customers"}
+          <div className="px-5 pb-2 pt-4">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--slate)]">
+              <span>
+                {activeCustomer
+                  ? `${activeCustomer.id} · ${activeCustomer.name} (baseline ${activeCustomer.weekly_demand.toLocaleString()}/wk)`
+                  : "Combined demand across all six customers"}
+              </span>
+              {activeMethodDetails && nextForecast !== null && (
+                <span className="rounded-full bg-[var(--navy)]/8 px-2.5 py-1 font-semibold text-[var(--navy)]">
+                  {activeMethodDetails.name}: next forecast{" "}
+                  {Number(nextForecast).toLocaleString()}
+                </span>
+              )}
             </div>
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <LineChart
+                  data={chartData}
+                  margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke="#edf0f4" vertical={false} />
                   <XAxis dataKey="week" tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 12, fill: "#64748b" }} width={44} axisLine={false} tickLine={false} />
                   <Tooltip
-                    formatter={(value) => [Number(value).toLocaleString(), "Demand"]}
+                    formatter={(value, name) => [
+                      Number(value).toLocaleString(),
+                      name,
+                    ]}
                     contentStyle={{ borderRadius: 8, borderColor: "#e5e8ee", fontSize: 13 }}
                   />
-                  <Bar dataKey="demand" fill="#1e3a5f" radius={[4, 4, 0, 0]} maxBarSize={42} />
-                </BarChart>
+                  <Legend
+                    iconType="circle"
+                    wrapperStyle={{ fontSize: 11, paddingTop: 4 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="demand"
+                    name="Historical demand"
+                    stroke="#1e3a5f"
+                    strokeWidth={2.5}
+                    dot={{ r: 3 }}
+                    connectNulls={false}
+                  />
+                  {activeMethod && (
+                    <Line
+                      type="monotone"
+                      dataKey="forecast"
+                      name="Forecast"
+                      stroke="#b45309"
+                      strokeWidth={2.5}
+                      strokeDasharray="6 4"
+                      dot={{ r: 3 }}
+                      connectNulls
+                    />
+                  )}
+                </LineChart>
               </ResponsiveContainer>
             </div>
           </div>
@@ -168,7 +261,7 @@ export default function ForecastSetupPage() {
                   if (!locked) setSelectedMethod(m.id);
                 }}
                 className={`rounded-lg border px-4 py-3.5 text-left transition-all disabled:cursor-default ${
-                  selectedMethod === m.id
+                  activeMethod === m.id
                     ? "border-[var(--navy)] bg-[var(--navy)]/[0.04] shadow-sm"
                     : "border-[var(--card-border)] hover:border-[var(--slate-light)] hover:bg-slate-50"
                 }`}
@@ -176,10 +269,10 @@ export default function ForecastSetupPage() {
                 <div className="flex items-center gap-2 text-sm font-medium text-[var(--navy)]">
                   <span
                     className={`flex h-4 w-4 items-center justify-center rounded-full border text-[9px] ${
-                      selectedMethod === m.id ? "border-[var(--navy)] bg-[var(--navy)] text-white" : "border-[var(--slate-light)]"
+                      activeMethod === m.id ? "border-[var(--navy)] bg-[var(--navy)] text-white" : "border-[var(--slate-light)]"
                     }`}
                   >
-                    {selectedMethod === m.id ? "✓" : ""}
+                    {activeMethod === m.id ? "✓" : ""}
                   </span>
                   {m.name}
                 </div>
@@ -195,7 +288,7 @@ export default function ForecastSetupPage() {
         </Card>
 
         <div className="mt-6 flex justify-end">
-          <PrimaryButton onClick={handleBegin} disabled={!selectedMethod || submitting}>
+          <PrimaryButton onClick={handleBegin} disabled={!activeMethod || submitting}>
             {locked ? "Back to Weekly Decisions" : submitting ? "Starting..." : "Begin Simulation"}
           </PrimaryButton>
         </div>

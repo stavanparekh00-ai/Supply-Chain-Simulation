@@ -287,12 +287,12 @@ export default function ResultsPage() {
                 label="Percentile"
                 value={
                   data.community.costPercentile
-                    ? `Better than ${data.community.costPercentile.betterThanPercent}%`
+                    ? `${data.community.costPercentile.betterThanPercent}%`
                     : "—"
                 }
                 sublabel={
                   data.community.costPercentile
-                    ? `Rank ${data.community.costPercentile.rank} of ${data.community.costPercentile.totalPlayers}`
+                    ? `Better than this share · rank ${data.community.costPercentile.rank} of ${data.community.costPercentile.totalPlayers}`
                     : "Needs at least two completed runs"
                 }
               />
@@ -1138,59 +1138,39 @@ const SUPPLIER_FACTS: {
   },
 ];
 
-const CONSTRAINTS: {
+interface ConstraintDef {
   name: string;
-  type: string;
-  appliesTo: string;
-  what: string;
+  equation: React.ReactNode;
   why: string;
-}[] = [
+}
+
+const CONSTRAINTS: ConstraintDef[] = [
   {
     name: "Non-negative orders",
-    type: "Hard",
-    appliesTo: "Everyone",
-    what: "Every order quantity placed with a supplier in a given week must be 0 or greater.",
-    why: "You cannot un-order units that were never ordered -- this just keeps the model physically meaningful.",
+    equation: <>q<sub>f,s,w</sub> &ge; 0</>,
+    why: "An order quantity for facility f, supplier s, week w can't be negative -- you can't un-order units that were never ordered.",
   },
   {
     name: "Supplier weekly capacity",
-    type: "Hard",
-    appliesTo: "Everyone",
-    what: "An order to a supplier in one week cannot exceed that supplier's stated weekly capacity per facility (900 / 700 / 800 units).",
-    why: "Suppliers are real production and shipping operations with finite throughput -- you cannot buy your way past their ceiling in a single week no matter how much you're willing to pay.",
+    equation: <>q<sub>f,s,w</sub> &le; Cap<sub>s</sub></>,
+    why: "Cap is 900 / 700 / 800 units depending on the supplier. Suppliers are real operations with finite throughput -- no amount of money buys past it in a single week.",
   },
   {
     name: "Lead-time-respecting arrivals",
-    type: "Hard (mechanics)",
-    appliesTo: "Everyone",
-    what: "An order placed in week w from a supplier with lead time L physically arrives no earlier than week w + L. Nothing the solver or a player does can make a shipment arrive faster.",
-    why: "This is what makes the game (and the Oracle) genuinely about planning ahead -- if every order arrived instantly, there would be nothing to optimize.",
+    equation: <>arrival week = order week + LeadTime<sub>s</sub> &minus; 1</>,
+    why: "An order can never land before its supplier's lead time has passed. This is what makes planning ahead matter at all -- if everything arrived instantly, there'd be nothing to optimize.",
   },
   {
     name: "Max inventory ceiling",
-    type: "Hard",
-    appliesTo: "Everyone (Oracle and players)",
-    what: "For players, if what's already on hand plus what's already arriving this week (from orders placed weeks ago) has reached the 2,500-unit cap, no new order can be placed at that facility this week -- since every supplier's lead time is at least 2 weeks, nothing ordered now could land this week anyway, so it's this week's existing position that's checked, not the new order itself. The Oracle applies the same 2,500-unit cap forward-looking, at each future checkpoint by which its current order would have actually arrived.",
-    why: "Warehouses have finite physical space. This is enforced for players too, with a live warning and a hard block before you can submit an order at a facility that's already full, so nobody can win by hoarding infinite stock.",
+    equation: <>OnHand<sub>f,w</sub> + Arriving<sub>f,w</sub> &le; 2,500</>,
+    why: "Warehouses have finite space. Since every supplier's lead time is 2+ weeks, an order placed this week can't land this week -- so this checks only what's already there. If it's already at the cap, no new order can be placed at that facility this week, for players and the Oracle alike.",
   },
   {
     name: "60% single-supplier diversification cap",
-    type: "Hard, Oracle-only",
-    appliesTo: "Oracle only",
-    what: "Across the whole run, no single supplier may account for more than 60% of a facility's total ordered volume.",
-    why: "Sourcing risk management: a facility that puts 100% of its volume on one supplier is one disruption away from a stockout. This is a deliberate benchmark design choice, not a law of the simulation -- players are free to concentrate their sourcing however they judge best, since exploring that tradeoff is part of the exercise.",
-  },
-  {
-    name: "No-lookahead information rule",
-    type: "Hard, decision-timing",
-    appliesTo: "Oracle only (players are naturally bound by this already)",
-    what: "Every decision -- which facilities to open, which forecasting method to use, and every week's order -- is made using only information available at or before the moment that decision has to be made. The Oracle never peeks at a week's actual demand before deciding that week's order, and it never picks a network or forecasting method by simulating candidates forward and choosing whichever happened to score lowest.",
-    why: "This is the whole point of the benchmark. An optimizer that gets to see the future isn't a fair comparison for a player who can't -- it would just prove hindsight is powerful, not that the plan was good. Every number the Oracle produces was earned under the same fog of war you play under.",
+    equation: <>&Sigma;<sub>w</sub> q<sub>f,s,w</sub> &le; 0.6 &times; &Sigma;<sub>s&prime;</sub> &Sigma;<sub>w</sub> q<sub>f,s&prime;,w</sub></>,
+    why: "No single supplier can account for more than 60% of a facility's total ordered volume across the run. A facility fully dependent on one supplier is one disruption away from a stockout. This is a deliberate benchmark design choice -- players are free to concentrate their sourcing however they judge best.",
   },
 ];
-
-const REMOVED_CONSTRAINT_NOTE =
-  "An earlier version of this model also enforced a minimum inventory floor (400 units). It was removed: with a hard floor, the solver could treat a single week of cheap backlog as a “free pass” to relax the floor, which is a modeling artifact, not a real business rule. The holding cost ($2/unit/week) and backorder cost ($20/unit/week) already price the tradeoff between carrying too much and too little stock directly into the objective function -- a separate floor constraint was redundant at best and gameable at worst.";
 
 function OracleSolverExplainer({ data }: { data: ResultsResponse }) {
   const totals = data.solverBenchmark.totals;
@@ -1207,14 +1187,12 @@ function OracleSolverExplainer({ data }: { data: ResultsResponse }) {
         </div>
         <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[var(--slate)]">
           The Oracle is a standalone optimization model that plays this exact
-          scenario under the exact same rules a human player does: it does
-          not know next week&apos;s demand, it cannot see disruptions before
-          they happen, and it cannot pick a plan by simulating outcomes and
-          keeping whichever worked out best. It makes three kinds of
-          decisions -- which facilities to open, which forecasting method to
-          trust, and how much to order each week -- and every one of them
-          uses only information that would genuinely be available at the
-          moment that decision has to be made. Its result on this scenario:{" "}
+          scenario under the exact same rules a human player does -- it never
+          sees a week&apos;s demand before deciding that week&apos;s order, and it
+          never picks a plan by simulating outcomes and keeping whichever
+          happened to work out best. It makes three kinds of decisions: which
+          facilities to open, which forecasting method to trust, and how much
+          to order each week. Its result on this scenario:{" "}
           <strong className="text-[var(--navy)]">{money(totals.totalCost)}</strong>{" "}
           total cost, opening <strong className="text-[var(--navy)]">{facilities}</strong>.
         </p>
@@ -1276,12 +1254,11 @@ function OracleSolverExplainer({ data }: { data: ResultsResponse }) {
 
       <Card className="p-6">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--slate)]">
-          Stage 1 &middot; Network design (static, before week 1)
+          Stage 1 &middot; Network design
         </h3>
         <p className="mt-2 text-sm leading-relaxed text-[var(--slate)]">
-          Before any week is played, the Oracle picks which facilities to
-          open using only information that exists before week 1 -- nothing
-          about how the 10 weeks will actually unfold.
+          Before any week is played, the Oracle decides which facilities to
+          open.
         </p>
         <ol className="mt-3 space-y-2.5 text-sm leading-relaxed text-[var(--slate)]">
           <li>
@@ -1290,99 +1267,136 @@ function OracleSolverExplainer({ data }: { data: ResultsResponse }) {
           </li>
           <li>
             <strong className="text-[var(--navy)]">2. Filter for feasibility.</strong>{" "}
-            A candidate is discarded if its suppliers cannot realistically
+            A candidate is discarded if its suppliers can&apos;t realistically
             keep up with its assigned demand once real lead-time ramp-up is
-            accounted for -- nothing arrives in week 1 in this scenario, so
-            the binding constraint is how much can accumulate by week 2 and
-            beyond, not the naive steady-state weekly total. This check uses
-            only supplier lead times, capacities, and starting inventory --
-            all known before week 1 -- never a simulated outcome.
+            factored in -- nothing arrives in week 1 here, so the binding
+            limit is how much can accumulate by week 2 onward, not a naive
+            steady-state weekly total.
           </li>
           <li>
-            <strong className="text-[var(--navy)]">3. Minimize static cost.</strong>{" "}
-            Among the feasible candidates, the Oracle opens whichever has the
-            lowest fixed cost + transport cost. It does not simulate any
-            candidate through the 10 weeks to make this choice.
+            <strong className="text-[var(--navy)]">3. Pick the cheapest feasible one.</strong>{" "}
+            Among what&apos;s left, the Oracle opens whichever combination has
+            the lowest fixed cost + transport cost.
           </li>
         </ol>
         <p className="mt-3 text-xs leading-relaxed text-[var(--slate-light)]">
-          Why the feasibility filter exists: without it, the cost-minimizing
-          answer could be a network that is structurally unable to meet
-          demand -- cheap on paper, but only because it's already sunk the
-          fixed cost before revealing it can't deliver. This mirrors a real
-          planning risk: committing capital to a network before checking it
-          can actually be supplied.
+          Why the feasibility filter matters: without it, the cheapest-looking
+          network on paper could be one that structurally can&apos;t keep up
+          with demand -- cheap on the fixed-cost line, but far more expensive
+          once the backorders it causes are added in.
         </p>
       </Card>
 
       <Card className="p-6">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--slate)]">
-          Stage 2 &middot; Forecasting method selection (static, before week 1)
+          Stage 2 &middot; Forecasting method
         </h3>
         <p className="mt-2 text-sm leading-relaxed text-[var(--slate)]">
-          The Oracle chooses its forecasting method the same way a careful
-          player can: it backtests all six available methods (naive, 2/3/4-week
+          The Oracle backtests all six available methods (naive, 2/3/4-week
           moving average, weighted moving average, exponential smoothing)
           against the 20 weeks of historical demand shown on the forecast
-          page, and locks in whichever produced the lowest mean absolute
-          error (MAE). For this scenario, that was{" "}
-          <strong className="text-[var(--navy)]">exponential smoothing</strong>. The
-          method is fixed for the entire run -- it is never swapped mid-game
-          based on how the actual weeks turn out.
+          page, and locks in whichever produced the lowest average error. For
+          this scenario, that was{" "}
+          <strong className="text-[var(--navy)]">exponential smoothing</strong>,
+          and it stays locked for the whole run.
         </p>
       </Card>
 
       <Card className="p-6">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--slate)]">
-          Stage 3 &middot; Weekly ordering (rolling, one week at a time)
+          Stage 3 &middot; Weekly ordering
         </h3>
         <p className="mt-2 text-sm leading-relaxed text-[var(--slate)]">
-          This is where the &quot;no-lookahead&quot; principle matters most.
-          Each week, for each open facility, the Oracle re-solves a small
-          optimization problem using only what it could actually know at
-          that moment: current on-hand inventory, current backlog, what&apos;s
-          already in transit, and its forecast of demand -- never that
-          week&apos;s or any future week&apos;s actual demand.
+          Each week, for each open facility, the Oracle asks one question
+          separately for every supplier: <em>&quot;if I don&apos;t order anything
+          more right now, will I have enough by the time this supplier could
+          actually deliver?&quot;</em>
         </p>
-        <p className="mt-3 text-sm leading-relaxed text-[var(--slate)]">
-          For every future week a checkpoint (one per lead time a supplier
-          could reach), it projects: <em>&quot;if I order nothing more, will my
-          on-hand position plus what&apos;s already arriving cover forecast
-          demand by then, with a safety margin?&quot;</em> The safety margin comes
-          from the newsvendor critical-fractile rule -- a classic inventory
-          formula that weighs the cost of holding one extra unit against the
-          cost of being one unit short:
-        </p>
-        <div className="mt-3 overflow-x-auto rounded-lg border border-[var(--card-border)] bg-slate-50/70 p-4">
-          <code className="text-xs leading-relaxed text-[var(--navy)] sm:text-sm">
-            z = &Phi;<sup>-1</sup>( backorder rate / (holding rate + backorder rate) ) = &Phi;<sup>-1</sup>(20 / 22) &asymp; 1.335
-            <br />
-            safety margin<sub>k</sub> = z &times; &sigma; &times; &radic;k
-          </code>
+        <ol className="mt-3 space-y-2.5 text-sm leading-relaxed text-[var(--slate)]">
+          <li>
+            <strong className="text-[var(--navy)]">1. Look ahead to that supplier&apos;s lead time.</strong>{" "}
+            A 2-week supplier is checked against 2 weeks from now; a 3-week
+            supplier against 3 weeks from now.
+          </li>
+          <li>
+            <strong className="text-[var(--navy)]">2. Add up what&apos;s already covered.</strong>{" "}
+            Current on-hand stock, plus everything ordered in earlier weeks
+            that&apos;s still in transit and due to land by then.
+          </li>
+          <li>
+            <strong className="text-[var(--navy)]">3. Compare that to what&apos;s needed.</strong>{" "}
+            The demand forecast for that stretch, plus a small safety
+            cushion sized to how much that facility&apos;s demand typically
+            swings -- a bigger cushion for slower suppliers, since more can
+            go wrong before backup stock shows up.
+          </li>
+          <li>
+            <strong className="text-[var(--navy)]">4. Order the shortfall.</strong>{" "}
+            Whatever&apos;s short becomes this week&apos;s order, filled from the
+            cheapest eligible supplier first, split enough to respect the
+            60% cap below.
+          </li>
+        </ol>
+        <div className="mt-4 rounded-lg border border-[var(--card-border)] bg-slate-50/70 p-4 text-sm leading-relaxed text-[var(--slate)]">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--slate-light)]">
+            Example
+          </span>
+          <p className="mt-1.5">
+            Two weeks out, a facility&apos;s forecast is 700 units/week and its
+            safety cushion for that stretch is 250 units, so the target is
+            about 1,650 units (2 &times; 700 + 250). It already has 900 on
+            hand and another 400 already arriving in time -- 1,300 total,
+            short by 350. That 350 becomes this week&apos;s order. Next week,
+            the whole check runs again with newly updated numbers.
+          </p>
         </div>
-        <p className="mt-3 text-sm leading-relaxed text-[var(--slate)]">
-          where &sigma; is that facility&apos;s demand volatility, estimated
-          only from history that has actually been revealed so far. Any
-          shortfall against that padded target becomes this week&apos;s order,
-          split across suppliers by cost (subject to the constraints below).
-          Once decided, the order is locked in -- next week starts the whole
-          process over with newly revealed information.
-        </p>
+        <details className="mt-4 text-sm text-[var(--slate)]">
+          <summary className="cursor-pointer font-medium text-[var(--navy)]">
+            The exact math behind the safety cushion
+          </summary>
+          <div className="mt-3 overflow-x-auto rounded-lg border border-[var(--card-border)] bg-slate-50/70 p-4">
+            <code className="text-xs leading-relaxed text-[var(--navy)] sm:text-sm">
+              z = &Phi;<sup>-1</sup>( backorder rate / (holding rate + backorder rate) ) = &Phi;<sup>-1</sup>(20 / 22) &asymp; 1.335
+              <br />
+              cushion<sub>k</sub> = z &times; &sigma; &times; &radic;k
+            </code>
+          </div>
+          <p className="mt-2 text-xs leading-relaxed text-[var(--slate-light)]">
+            This is the newsvendor critical-fractile rule: it weighs the cost
+            of holding one extra unit against the cost of being one unit
+            short. &sigma; is that facility&apos;s demand volatility, estimated
+            only from history that has actually been revealed so far, and k
+            is how many weeks out the checkpoint is.
+          </p>
+        </details>
       </Card>
 
       <Card className="overflow-hidden">
         <div className="border-b border-[var(--card-border)] px-6 py-4">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--slate)]">
-            Every constraint, and why it exists
+            Constraints
           </h3>
         </div>
-        <div className="p-6">
-          <DataTable
-            headers={["Constraint", "Type", "Applies to", "What it does", "Why it exists"]}
-            rows={CONSTRAINTS.map((c) => [c.name, c.type, c.appliesTo, c.what, c.why])}
-          />
-          <p className="mt-4 text-xs leading-relaxed text-[var(--slate-light)]">
-            {REMOVED_CONSTRAINT_NOTE}
+        <div className="grid gap-0 divide-y divide-[var(--card-border)] sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-3">
+          {CONSTRAINTS.map((c) => (
+            <div key={c.name} className="p-5">
+              <div className="text-sm font-semibold text-[var(--navy)]">{c.name}</div>
+              <div className="mt-2 overflow-x-auto rounded-lg border border-[var(--card-border)] bg-slate-50/70 px-3 py-2.5">
+                <code className="text-xs text-[var(--navy)] sm:text-sm">{c.equation}</code>
+              </div>
+              <p className="mt-2.5 text-xs leading-relaxed text-[var(--slate-light)]">{c.why}</p>
+            </div>
+          ))}
+        </div>
+        <div className="border-t border-[var(--card-border)] px-5 py-4">
+          <p className="text-xs leading-relaxed text-[var(--slate-light)]">
+            An earlier version also enforced a minimum inventory floor (400
+            units). It was removed: with a hard floor, the solver could treat
+            a single week of cheap backlog as a &quot;free pass&quot; to relax the
+            floor, which is a modeling artifact, not a real business rule.
+            Holding cost and backorder cost already price that tradeoff
+            directly into the objective function -- a separate floor
+            constraint was redundant at best and gameable at worst.
           </p>
         </div>
       </Card>
@@ -1407,7 +1421,7 @@ function OracleSolverExplainer({ data }: { data: ResultsResponse }) {
         <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--slate)]">
           The Oracle&apos;s final answer on this scenario
         </h3>
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <MetricCard label="Network" value={facilities} />
           <MetricCard label="Forecast method" value="Exp. smoothing" />
           <MetricCard label="Fixed + transport" value={money(totals.fixedCost + totals.transportCost)} />
@@ -1419,7 +1433,90 @@ function OracleSolverExplainer({ data }: { data: ResultsResponse }) {
           {data.solverBenchmark.notice}
         </p>
       </Card>
+
+      <LessonsLearned />
     </div>
+  );
+}
+
+function LessonsLearned() {
+  const insights = [
+    {
+      title: "A little safety margin is worth a lot",
+      body: (
+        <>
+          To see what discipline is actually worth, this project also ran a
+          simple rule-based &quot;player&quot; through the identical simulation --
+          one that orders exactly its forecasted shortfall with{" "}
+          <strong>no safety cushion</strong>, cheapest supplier first, on the
+          same F3 + F4 network as the Oracle. It cost{" "}
+          <strong className="text-[var(--navy)]">$1,262,445</strong> --{" "}
+          <strong className="text-[var(--navy)]">85% more</strong> than the
+          Oracle&apos;s $681,295 -- almost entirely from backorder cost:{" "}
+          <strong className="text-[var(--navy)]">$670,500</strong> versus the
+          Oracle&apos;s $21,460, a 31x difference, even though it actually held{" "}
+          <strong>less</strong> inventory ($1,560 vs. $22,390 in holding
+          cost). Skipping the cushion that protects against forecast error
+          and lead-time gaps was the single biggest cost driver in this
+          scenario.
+        </>
+      ),
+    },
+    {
+      title: "A more accurate forecast doesn't automatically save you",
+      body: (
+        <>
+          Paired with that same no-cushion ordering habit, swapping in each
+          of the six forecasting methods barely moved the needle in the
+          direction you&apos;d expect: naive forecasting produced the{" "}
+          <strong>cheapest</strong> of the six ($1,262,445), while exponential
+          smoothing -- the method with the best backtested accuracy -- produced
+          the <strong>worst</strong> ($1,384,080). Forecast accuracy only pays
+          off if the ordering policy leaves room to act on it; without a
+          safety cushion, a more &quot;correct&quot; forecast just means less
+          margin for error.
+        </>
+      ),
+    },
+    {
+      title: "The cheapest network on paper isn't always the cheapest overall",
+      body: (
+        <>
+          Opening only the single lowest-fixed-cost facility (F5) with the
+          same no-cushion habits cost{" "}
+          <strong className="text-[var(--navy)]">$1,322,855</strong> -- more
+          than opening two facilities (F3 + F4) despite the extra $125,000
+          fixed cost. The second facility added real fulfillment capacity
+          that avoided far more in backorder cost than it cost to open.
+        </>
+      ),
+    },
+  ];
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="border-b border-[var(--card-border)] px-6 py-4">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--slate)]">
+          Lessons learned
+        </h3>
+      </div>
+      <div className="divide-y divide-[var(--card-border)]">
+        {insights.map((insight) => (
+          <div key={insight.title} className="p-6">
+            <div className="text-sm font-semibold text-[var(--navy)]">{insight.title}</div>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--slate)]">{insight.body}</p>
+          </div>
+        ))}
+      </div>
+      <div className="border-t border-[var(--card-border)] bg-slate-50/70 px-6 py-4">
+        <p className="text-xs leading-relaxed text-[var(--slate-light)]">
+          None of these are Oracle-specific tricks -- they&apos;re just what the
+          cost structure of this scenario rewards and punishes, made visible
+          by comparing a disciplined plan against an undisciplined one under
+          the exact same rules.
+        </p>
+      </div>
+    </Card>
   );
 }
 

@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
 import { loadScenarioData } from "@/lib/scenarioData";
 import { ForecastingMethodId } from "@/lib/forecasting";
+import { scoreForecastAccuracy } from "@/lib/forecastAccuracy";
 import {
-  scoreForecastAccuracy,
-  scorePerfectForesightAccuracy,
-} from "@/lib/forecastAccuracy";
-import { buildMilpBenchmark } from "@/lib/milpBenchmark";
+  ORACLE_FACILITIES,
+  ORACLE_METHOD_ID,
+  buildOracleActualDemandRows,
+  buildOracleBenchmark,
+} from "@/lib/oracleBenchmark";
 import {
   FillRateStateRow,
   summarizeFillRate,
@@ -40,18 +42,31 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const totalProcurementCost = periodStateRes.rows.reduce((s, r) => s + Number(r.procurement_cost), 0);
   const totalHoldingCost = periodStateRes.rows.reduce((s, r) => s + Number(r.holding_cost), 0);
   const totalBackorderCost = periodStateRes.rows.reduce((s, r) => s + Number(r.backorder_cost), 0);
-  const totalCost = totalProcurementCost + totalHoldingCost + totalBackorderCost;
+  // The network's one-time fixed + transport cost -- previously missing
+  // from every total/ranking on this page entirely, meaning the facility
+  // design decision (up to $375,000 across the 5 candidates) was invisible
+  // to the one number players actually compare themselves by.
+  const totalFixedCost = Number(session.network_fixed_cost) || 0;
+  const totalTransportCost = Number(session.network_transport_cost) || 0;
+  const totalCost =
+    totalProcurementCost + totalHoldingCost + totalBackorderCost + totalFixedCost + totalTransportCost;
   const totalBackorderedUnits = periodStateRes.rows.reduce((s, r) => s + Number(r.backlog), 0);
   const data = loadScenarioData();
-  const milpBenchmark = buildMilpBenchmark(data);
+  const oracleBenchmark = buildOracleBenchmark(data);
   const playerFillRate = summarizeFillRate(periodStateRes.rows);
   const openedFacilities: string[] = session.opened_facilities ?? [];
   const methodId = session.forecasting_method_id as ForecastingMethodId;
   const forecastAccuracy = scoreForecastAccuracy(data, openedFacilities, methodId, periodStateRes.rows);
-  const milpForecastAccuracy = scorePerfectForesightAccuracy(periodStateRes.rows);
+  const oracleForecastAccuracy = scoreForecastAccuracy(
+    data,
+    [...ORACLE_FACILITIES],
+    ORACLE_METHOD_ID,
+    buildOracleActualDemandRows(data)
+  );
 
   const completedStateRes = await pool.query(
-    `SELECT s.id AS session_id, ps.week, ps.facility_id, ps.on_hand_start,
+    `SELECT s.id AS session_id, s.network_fixed_cost, s.network_transport_cost,
+            ps.week, ps.facility_id, ps.on_hand_start,
             ps.arriving, ps.actual_demand, ps.on_hand_end, ps.backlog,
             ps.procurement_cost, ps.holding_cost, ps.backorder_cost
      FROM sessions s
@@ -68,6 +83,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     backlog: number;
   };
   type RunSummary = {
+    networkCost: number;
     procurementCost: number;
     holdingCost: number;
     backorderCost: number;
@@ -79,13 +95,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const completedRuns = new Map<string, RunSummary>();
   for (const row of completedStateRes.rows) {
     const sessionId = String(row.session_id);
+    const networkCost = (Number(row.network_fixed_cost) || 0) + (Number(row.network_transport_cost) || 0);
     const run =
       completedRuns.get(sessionId) ??
       {
+        networkCost,
         procurementCost: 0,
         holdingCost: 0,
         backorderCost: 0,
-        totalCost: 0,
+        totalCost: networkCost,
         byWeek: new Map<number, WeeklySummary>(),
         fillRows: [],
       };
@@ -136,7 +154,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         .map((run) => run.byWeek.get(week))
         .filter((row): row is WeeklySummary => Boolean(row));
       const cumulativeSamples = peerRuns.map((run) => {
-        let cumulative = 0;
+        let cumulative = run.networkCost;
         for (let currentWeek = 1; currentWeek <= week; currentWeek += 1) {
           const row = run.byWeek.get(currentWeek);
           if (row) {
@@ -222,6 +240,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     periodState: periodStateRes.rows,
     decisions: decisionsRes.rows,
     totals: {
+      totalFixedCost,
+      totalTransportCost,
       totalProcurementCost,
       totalHoldingCost,
       totalBackorderCost,
@@ -233,6 +253,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       completedPlayers: peerCountAll,
       averageCost: average(peerRuns.map((run) => run.totalCost)),
       averageBreakdown: {
+        networkCost: average(peerRuns.map((run) => run.networkCost)),
         procurementCost: average(peerRuns.map((run) => run.procurementCost)),
         holdingCost: average(peerRuns.map((run) => run.holdingCost)),
         backorderCost: average(peerRuns.map((run) => run.backorderCost)),
@@ -257,14 +278,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         averageRmse: peerAverageRmse,
       },
       milp: {
-        methodId: milpForecastAccuracy.methodId,
-        methodName: milpForecastAccuracy.methodName,
-        mae: milpForecastAccuracy.mae,
-        mse: milpForecastAccuracy.mse,
-        rmse: milpForecastAccuracy.rmse,
-        byWeek: milpForecastAccuracy.byWeek,
+        methodId: oracleForecastAccuracy.methodId,
+        methodName: oracleForecastAccuracy.methodName,
+        mae: oracleForecastAccuracy.mae,
+        mse: oracleForecastAccuracy.mse,
+        rmse: oracleForecastAccuracy.rmse,
+        byWeek: oracleForecastAccuracy.byWeek,
       },
     },
-    solverBenchmark: milpBenchmark,
+    solverBenchmark: oracleBenchmark,
   });
 }

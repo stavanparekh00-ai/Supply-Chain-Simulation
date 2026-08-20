@@ -210,6 +210,21 @@ export default function PlayPage() {
         hardIssues.push(`${facility.facilityId}: ${supplier.name} exceeds available capacity.`);
       }
     }
+
+    const facilityOrderTotal = facility.suppliers.reduce(
+      (sum, supplier) => sum + qtyOf(facility.facilityId, supplier.id),
+      0
+    );
+    const projectedPosition = facility.onHandStart + facility.arrivingThisWeek + facilityOrderTotal;
+    if (projectedPosition > facility.maxInventoryCeiling) {
+      const roomLeft = Math.max(
+        0,
+        facility.maxInventoryCeiling - facility.onHandStart - facility.arrivingThisWeek
+      );
+      hardIssues.push(
+        `${facility.facilityId}: facility is already near capacity (${facility.onHandStart.toLocaleString()} on hand + ${facility.arrivingThisWeek.toLocaleString()} arriving) -- only ${roomLeft.toLocaleString()} more units of room before the ${facility.maxInventoryCeiling.toLocaleString()}-unit limit. Reduce this order by ${(projectedPosition - facility.maxInventoryCeiling).toLocaleString()}.`
+      );
+    }
   }
 
   const costData =
@@ -383,7 +398,7 @@ export default function PlayPage() {
         <div className="mt-6 flex flex-col items-end gap-3">
           {hardIssues.length > 0 && (
             <div className="w-full rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">
-              <div className="font-semibold">Fix capacity issues before submitting</div>
+              <div className="font-semibold">Fix these issues before submitting</div>
               <ul className="mt-1 list-disc pl-4">
                 {hardIssues.map((issue) => (
                   <li key={issue}>{issue}</li>

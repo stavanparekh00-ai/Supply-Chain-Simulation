@@ -56,7 +56,7 @@
       "city": "Reno, NV",
       "map_x": 95,
       "map_y": 235,
-      "fixed_cost_to_open": 5000
+      "fixed_cost_to_open": 125000
     },
     {
       "id": "F2",
@@ -64,7 +64,7 @@
       "city": "Phoenix, AZ",
       "map_x": 155,
       "map_y": 355,
-      "fixed_cost_to_open": 7000
+      "fixed_cost_to_open": 125000
     },
     {
       "id": "F3",
@@ -72,7 +72,7 @@
       "city": "Denver, CO",
       "map_x": 300,
       "map_y": 270,
-      "fixed_cost_to_open": 4000
+      "fixed_cost_to_open": 125000
     },
     {
       "id": "F4",
@@ -80,7 +80,7 @@
       "city": "Atlanta, GA",
       "map_x": 700,
       "map_y": 355,
-      "fixed_cost_to_open": 6000
+      "fixed_cost_to_open": 125000
     },
     {
       "id": "F5",
@@ -88,7 +88,7 @@
       "city": "Chicago, IL",
       "map_x": 585,
       "map_y": 220,
-      "fixed_cost_to_open": 5500
+      "fixed_cost_to_open": 125000
     }
   ],
   "customers": [
@@ -391,39 +391,38 @@
     }
   },
   "network_design_reference_solution": {
-    "description": "Brute-force-verified optimal answer for Stage 0 (Network Design) under a max-3 open-facility rule, using geographically consistent transport costs.",
+    "description": "Brute-force-verified optimal answer for Stage 0 (Network Design) under a max-3 open-facility rule, using geographically consistent transport costs. Re-verified after fixed_cost_to_open was set to $125,000 for every facility: at that fixed-cost level, opening a second facility (+$125,000) can never be justified, since even the largest possible transport-cost saving from adding a facility is at most the cost of the best single facility's entire transport bill (~$14,000-$19,000) -- an order of magnitude too small. The optimum is therefore always exactly one facility, whichever has the lowest total transport cost across all six customers.",
     "opened_facilities": [
-      "F1",
       "F5"
     ],
     "closed_facilities": [
+      "F1",
       "F2",
       "F3",
       "F4"
     ],
     "customer_assignment": {
-      "C1": "F1",
-      "C2": "F1",
+      "C1": "F5",
+      "C2": "F5",
       "C3": "F5",
       "C4": "F5",
       "C5": "F5",
       "C6": "F5"
     },
-    "total_cost": 18910,
-    "fixed_cost_component": 10500,
-    "transport_cost_component": 8410,
+    "total_cost": 139110,
+    "fixed_cost_component": 125000,
+    "transport_cost_component": 14110,
     "runner_up": {
       "opened_facilities": [
-        "F1",
         "F4"
       ],
-      "total_cost": 19070,
-      "note": "Closest alternative under the max-3 open-facility rule."
+      "total_cost": 140120,
+      "note": "Next-cheapest single-facility choice (Atlanta); still strictly better than opening any 2- or 3-facility combination, which starts at $250,000 in fixed cost alone."
     }
   },
   "per_period_cost_parameters": {
     "holding_cost_per_unit_per_week": 2,
-    "backorder_cost_per_unit_per_week": 8,
+    "backorder_cost_per_unit_per_week": 20,
     "min_inventory_floor_units": 400,
     "max_inventory_ceiling_units": 2500,
     "initial_on_hand_inventory_units": 1600,

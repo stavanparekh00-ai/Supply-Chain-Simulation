@@ -88,6 +88,49 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         }
         // Supplier share limits are soft guidance only for players -- do not block submit.
       }
+
+      // Max inventory ceiling: hard-blocked. A facility's inventory position
+      // (what's already on hand, plus what's already inbound from past
+      // orders, plus what's being ordered now) can't exceed capacity -- this
+      // is what catches a player who over-ordered earlier, got a lighter
+      // week of demand than expected, and is now sitting on more stock than
+      // planned, then tries to pile on an even bigger order on top.
+      const { onHand: onHandForCeiling } = await getFacilityStateBeforeWeek(
+        client,
+        id,
+        facilityId,
+        week,
+        data.per_period_cost_parameters.initial_on_hand_inventory_units
+      );
+      const pastDecisionsForCeiling = await getPastDecisions(client, id, facilityId);
+      const partialFillForCeiling = disruptionsInWeek(data, week).find(
+        (d) => d.type === "supplier_partial_fill"
+      );
+      const fillRateForCeiling: Record<string, number> = {};
+      if (partialFillForCeiling?.target_supplier_id) {
+        fillRateForCeiling[partialFillForCeiling.target_supplier_id] = Number(
+          partialFillForCeiling.effect.fill_rate ?? 1
+        );
+      }
+      const arrivalForCeiling = arrivingInWeek(
+        pastDecisionsForCeiling,
+        week,
+        leadTimeBySupplier,
+        fillRateForCeiling
+      );
+      const orderedTotal = facilityOrders.reduce((sum, o) => sum + o.quantity, 0);
+      const ceiling = data.per_period_cost_parameters.max_inventory_ceiling_units;
+      const projectedPosition = onHandForCeiling + arrivalForCeiling.arriving + orderedTotal;
+      if (projectedPosition > ceiling) {
+        await client.query("ROLLBACK");
+        const roomLeft = Math.max(0, ceiling - onHandForCeiling - arrivalForCeiling.arriving);
+        return NextResponse.json(
+          {
+            error: `${facilityId} is already near capacity: ${onHandForCeiling.toLocaleString()} on hand + ${arrivalForCeiling.arriving.toLocaleString()} arriving this week leaves only ${roomLeft.toLocaleString()} units of room (max ${ceiling.toLocaleString()}). Reduce this facility's total order by ${(projectedPosition - ceiling).toLocaleString()} units.`,
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Insert this week's decisions first (idempotent-ish: rely on UNIQUE constraint / prior validation).

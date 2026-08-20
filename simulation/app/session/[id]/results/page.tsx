@@ -61,6 +61,8 @@ interface ResultsResponse {
   periodState: PeriodStateRow[];
   decisions: DecisionRow[];
   totals: {
+    totalFixedCost: number;
+    totalTransportCost: number;
     totalProcurementCost: number;
     totalHoldingCost: number;
     totalBackorderCost: number;
@@ -85,6 +87,7 @@ interface ResultsResponse {
     completedPlayers: number;
     averageCost: number | null;
     averageBreakdown: {
+      networkCost: number | null;
       procurementCost: number | null;
       holdingCost: number | null;
       backorderCost: number | null;
@@ -136,6 +139,8 @@ interface ResultsResponse {
     notice: string;
     openedFacilities: string[];
     totals: {
+      fixedCost: number;
+      transportCost: number;
       procurementCost: number;
       holdingCost: number;
       backorderCost: number;
@@ -242,11 +247,16 @@ export default function ResultsPage() {
 
         <PerformanceHero data={data} />
 
-        <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-6">
+        <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-7">
           <MetricCard
             label="Total Cost"
             value={money(data.totals.totalCost)}
             highlight
+          />
+          <MetricCard
+            label="Network Cost"
+            value={money(data.totals.totalFixedCost + data.totals.totalTransportCost)}
+            sublabel={`${data.session.opened_facilities.length} facilit${data.session.opened_facilities.length === 1 ? "y" : "ies"} opened`}
           />
           <MetricCard
             label="Procurement"
@@ -333,8 +343,8 @@ function PerformanceHero({ data }: { data: ResultsResponse }) {
           <div className="mt-3 flex flex-wrap gap-2 text-xs text-[var(--slate)]">
             <span className="rounded-full bg-slate-100 px-3 py-1.5">
               {milpDelta >= 0
-                ? `${money(milpDelta)} above MILP`
-                : `${money(Math.abs(milpDelta))} below MILP`}
+                ? `${money(milpDelta)} above the Oracle`
+                : `${money(Math.abs(milpDelta))} below the Oracle`}
             </span>
             {averageDelta !== null && (
               <span className="rounded-full bg-slate-100 px-3 py-1.5">
@@ -394,7 +404,7 @@ function ComparisonControls({
       <div className="flex flex-wrap gap-2">
         <ToggleChip
           active={showMilp}
-          label="MILP model"
+          label="Oracle"
           color={MILP_COLOR}
           onClick={onMilp}
         />
@@ -507,7 +517,7 @@ function ResultsCharts({
             />
             {showMilp && (
               <Bar
-                dataKey="MILP"
+                dataKey="Oracle"
                 fill={MILP_COLOR}
                 radius={[3, 3, 0, 0]}
               />
@@ -719,7 +729,7 @@ function ComparisonLines({
         <Line
           type="monotone"
           dataKey={milpKey}
-          name="MILP model"
+          name="Oracle"
           stroke={MILP_COLOR}
           strokeWidth={2.3}
           strokeDasharray="6 4"
@@ -759,7 +769,7 @@ function ForecastCharts({
     week: `W${row.week}`,
     "Your forecast": row.forecast,
     Actual: row.actual,
-    "MILP forecast": milpByWeek.get(row.week) ?? null,
+    "Oracle forecast": milpByWeek.get(row.week) ?? null,
   }));
   const showPeerBars =
     showCommunity && data.forecastAccuracy.peers.completedWithSameMethod > 0;
@@ -767,7 +777,7 @@ function ForecastCharts({
     {
       metric: "MAE",
       You: Math.round(data.forecastAccuracy.mae),
-      MILP: Math.round(data.forecastAccuracy.milp.mae),
+      Oracle: Math.round(data.forecastAccuracy.milp.mae),
       "Same-method average":
         data.forecastAccuracy.peers.averageMae === null
           ? null
@@ -776,7 +786,7 @@ function ForecastCharts({
     {
       metric: "RMSE",
       You: Math.round(data.forecastAccuracy.rmse),
-      MILP: Math.round(data.forecastAccuracy.milp.rmse),
+      Oracle: Math.round(data.forecastAccuracy.milp.rmse),
       "Same-method average":
         data.forecastAccuracy.peers.averageRmse === null
           ? null
@@ -795,7 +805,7 @@ function ForecastCharts({
             <p className="mt-1 text-xs text-[var(--slate)]">
               Actual demand, your forecast
               {showMilp
-                ? `, and MILP (${data.forecastAccuracy.milp.methodName.toLowerCase()})`
+                ? `, and the Oracle's (${data.forecastAccuracy.milp.methodName.toLowerCase()})`
                 : ""}{" "}
               across {data.forecastAccuracy.observations} facility-weeks.
             </p>
@@ -822,7 +832,7 @@ function ForecastCharts({
             </span>
             {showMilp && (
               <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-800 shadow-sm">
-                MILP MAE {Math.round(data.forecastAccuracy.milp.mae)} · RMSE{" "}
+                Oracle MAE {Math.round(data.forecastAccuracy.milp.mae)} · RMSE{" "}
                 {Math.round(data.forecastAccuracy.milp.rmse)}
               </span>
             )}
@@ -877,7 +887,7 @@ function ForecastCharts({
                 {showMilp && (
                   <Line
                     type="monotone"
-                    dataKey="MILP forecast"
+                    dataKey="Oracle forecast"
                     stroke={MILP_COLOR}
                     strokeWidth={2}
                     strokeDasharray="2 2"
@@ -889,7 +899,9 @@ function ForecastCharts({
           </div>
           {showMilp && (
             <p className="mt-2 text-[11px] leading-relaxed text-[var(--slate-light)]">
-              MILP uses perfect foresight, so its forecast line matches Actual.
+              The Oracle picks its forecasting method the same way you can -- by checking
+              which method fit historical demand best -- and never sees a week&apos;s actual
+              demand before deciding that week&apos;s order.
             </p>
           )}
         </div>
@@ -936,13 +948,13 @@ function ForecastCharts({
                 </Bar>
                 {showMilp && (
                   <Bar
-                    dataKey="MILP"
+                    dataKey="Oracle"
                     fill={MILP_COLOR}
                     radius={[4, 4, 0, 0]}
                     minPointSize={3}
                   >
                     <LabelList
-                      dataKey="MILP"
+                      dataKey="Oracle"
                       position="top"
                       style={{ fontSize: 10, fill: "#92400e" }}
                     />
@@ -968,7 +980,7 @@ function ForecastCharts({
           <p className="mt-2 text-[11px] leading-relaxed text-[var(--slate-light)]">
             Lower error is better.
             {showMilp
-              ? " MILP MAE/RMSE are 0 because it plans with realized demand."
+              ? " The Oracle's error comes from the same forecast uncertainty you face -- it's not zero."
               : ""}
             {showPeerBars
               ? " Same-method average compares peers who chose your forecasting method."
@@ -1082,36 +1094,44 @@ function ChartCard({
 function buildChartData(data: ResultsResponse) {
   const community = data.community.averageBreakdown;
   const communityTotal =
+    community.networkCost === null ||
     community.procurementCost === null ||
     community.holdingCost === null ||
     community.backorderCost === null
       ? null
-      : community.procurementCost +
+      : community.networkCost +
+        community.procurementCost +
         community.holdingCost +
         community.backorderCost;
   const costBreakdown = [
     {
+      category: "Network",
+      Player: data.totals.totalFixedCost + data.totals.totalTransportCost,
+      Oracle: data.solverBenchmark.totals.fixedCost + data.solverBenchmark.totals.transportCost,
+      "Player average": community.networkCost,
+    },
+    {
       category: "Procurement",
       Player: data.totals.totalProcurementCost,
-      MILP: data.solverBenchmark.totals.procurementCost,
+      Oracle: data.solverBenchmark.totals.procurementCost,
       "Player average": community.procurementCost,
     },
     {
       category: "Inventory",
       Player: data.totals.totalHoldingCost,
-      MILP: data.solverBenchmark.totals.holdingCost,
+      Oracle: data.solverBenchmark.totals.holdingCost,
       "Player average": community.holdingCost,
     },
     {
       category: "Backorder",
       Player: data.totals.totalBackorderCost,
-      MILP: data.solverBenchmark.totals.backorderCost,
+      Oracle: data.solverBenchmark.totals.backorderCost,
       "Player average": community.backorderCost,
     },
     {
       category: "Total",
       Player: data.totals.totalCost,
-      MILP: data.solverBenchmark.totals.totalCost,
+      Oracle: data.solverBenchmark.totals.totalCost,
       "Player average": communityTotal,
     },
   ];
@@ -1139,7 +1159,7 @@ function buildChartData(data: ResultsResponse) {
   const playerFillByWeek = new Map(
     data.fillRate.weekly.map((row) => [row.week, row.fillRatePct])
   );
-  let playerCumulative = 0;
+  let playerCumulative = data.totals.totalFixedCost + data.totals.totalTransportCost;
   const byWeek = Array.from(
     { length: data.solverBenchmark.byWeek.length },
     (_, index) => {

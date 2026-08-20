@@ -24,6 +24,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const week: number = session.current_week;
   const openedFacilities: string[] = session.opened_facilities;
   const methodId: ForecastingMethodId = session.forecasting_method_id;
+  // The network's one-time fixed + transport cost, incurred at the moment
+  // facilities were opened -- recognized starting week 1 so the running
+  // "Cumulative Cost" a player watches during play reflects the true cost
+  // of their network choice, not just their week-to-week ordering.
+  const networkCost = (Number(session.network_fixed_cost) || 0) + (Number(session.network_transport_cost) || 0);
 
   const facilities = await Promise.all(
     openedFacilities.map((facilityId) =>
@@ -71,7 +76,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     forecastByWeek.set(periodWeek, forecastSum);
   }
 
-  let runningCost = 0;
+  let runningCost = networkCost;
   const cumulativeCostByWeek = Array.from(costByWeek.entries()).map(([periodWeek, cost]) => {
     runningCost += cost;
     return { week: periodWeek, cost: Math.round(runningCost) };
@@ -149,7 +154,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       currentWeekForecast,
     },
     performance: {
-      cumulativeCost: Math.round(cumulativeCost),
+      cumulativeCost: Math.round(networkCost + cumulativeCost),
       fillRatePct: fillRate.cumulativeFillRatePct,
       currentBacklog: latestStates.reduce((sum, r) => sum + Number(r.backlog), 0),
       endingInventory: latestStates.reduce((sum, r) => sum + Number(r.on_hand_end), 0),

@@ -1170,8 +1170,8 @@ const CONSTRAINTS: {
     name: "Max inventory ceiling",
     type: "Hard",
     appliesTo: "Everyone (Oracle and players)",
-    what: "Projected on-hand inventory at a facility -- what's already there plus what's still arriving plus what you're about to order -- can never be pushed over 2,500 units.",
-    why: "Warehouses have finite physical space. This is enforced for players too, with a live warning before you can submit an order that would breach it, so nobody can win by hoarding infinite stock.",
+    what: "For players, if what's already on hand plus what's already arriving this week (from orders placed weeks ago) has reached the 2,500-unit cap, no new order can be placed at that facility this week -- since every supplier's lead time is at least 2 weeks, nothing ordered now could land this week anyway, so it's this week's existing position that's checked, not the new order itself. The Oracle applies the same 2,500-unit cap forward-looking, at each future checkpoint by which its current order would have actually arrived.",
+    why: "Warehouses have finite physical space. This is enforced for players too, with a live warning and a hard block before you can submit an order at a facility that's already full, so nobody can win by hoarding infinite stock.",
   },
   {
     name: "60% single-supplier diversification cap",

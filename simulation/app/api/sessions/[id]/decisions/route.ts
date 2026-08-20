@@ -89,12 +89,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         // Supplier share limits are soft guidance only for players -- do not block submit.
       }
 
-      // Max inventory ceiling: hard-blocked. A facility's inventory position
-      // (what's already on hand, plus what's already inbound from past
-      // orders, plus what's being ordered now) can't exceed capacity -- this
-      // is what catches a player who over-ordered earlier, got a lighter
-      // week of demand than expected, and is now sitting on more stock than
-      // planned, then tries to pile on an even bigger order on top.
+      // Max inventory ceiling: hard-blocked. Every supplier has a lead time
+      // of at least 2 weeks, so an order placed this week can never arrive
+      // this week -- only what's already on hand plus what's already
+      // inbound from past orders counts against this week's capacity. If
+      // that alone already meets or exceeds the ceiling, the facility can't
+      // accept any new order this week at all, regardless of size.
       const { onHand: onHandForCeiling } = await getFacilityStateBeforeWeek(
         client,
         id,
@@ -120,13 +120,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       );
       const orderedTotal = facilityOrders.reduce((sum, o) => sum + o.quantity, 0);
       const ceiling = data.per_period_cost_parameters.max_inventory_ceiling_units;
-      const projectedPosition = onHandForCeiling + arrivalForCeiling.arriving + orderedTotal;
-      if (projectedPosition > ceiling) {
+      const currentPosition = onHandForCeiling + arrivalForCeiling.arriving;
+      if (currentPosition >= ceiling && orderedTotal > 0) {
         await client.query("ROLLBACK");
-        const roomLeft = Math.max(0, ceiling - onHandForCeiling - arrivalForCeiling.arriving);
         return NextResponse.json(
           {
-            error: `${facilityId} is already near capacity: ${onHandForCeiling.toLocaleString()} on hand + ${arrivalForCeiling.arriving.toLocaleString()} arriving this week leaves only ${roomLeft.toLocaleString()} units of room (max ${ceiling.toLocaleString()}). Reduce this facility's total order by ${(projectedPosition - ceiling).toLocaleString()} units.`,
+            error: `${facilityId} already has ${onHandForCeiling.toLocaleString()} on hand + ${arrivalForCeiling.arriving.toLocaleString()} arriving this week = ${currentPosition.toLocaleString()} units, at or above its ${ceiling.toLocaleString()}-unit capacity. You can't place any new order at this facility this week -- wait for on-hand inventory or incoming shipments to clear first.`,
           },
           { status: 400 }
         );

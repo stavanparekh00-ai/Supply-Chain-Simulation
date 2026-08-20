@@ -215,14 +215,13 @@ export default function PlayPage() {
       (sum, supplier) => sum + qtyOf(facility.facilityId, supplier.id),
       0
     );
-    const projectedPosition = facility.onHandStart + facility.arrivingThisWeek + facilityOrderTotal;
-    if (projectedPosition > facility.maxInventoryCeiling) {
-      const roomLeft = Math.max(
-        0,
-        facility.maxInventoryCeiling - facility.onHandStart - facility.arrivingThisWeek
-      );
+    // Every supplier has a lead time of at least 2 weeks, so nothing ordered
+    // this week can possibly arrive this week -- only what's already on hand
+    // or already in transit counts against this week's capacity.
+    const currentPosition = facility.onHandStart + facility.arrivingThisWeek;
+    if (currentPosition >= facility.maxInventoryCeiling && facilityOrderTotal > 0) {
       hardIssues.push(
-        `${facility.facilityId}: facility is already near capacity (${facility.onHandStart.toLocaleString()} on hand + ${facility.arrivingThisWeek.toLocaleString()} arriving) -- only ${roomLeft.toLocaleString()} more units of room before the ${facility.maxInventoryCeiling.toLocaleString()}-unit limit. Reduce this order by ${(projectedPosition - facility.maxInventoryCeiling).toLocaleString()}.`
+        `${facility.facilityId}: facility already has ${facility.onHandStart.toLocaleString()} on hand + ${facility.arrivingThisWeek.toLocaleString()} arriving this week = ${currentPosition.toLocaleString()} units, at or above its ${facility.maxInventoryCeiling.toLocaleString()}-unit capacity. You can't place any new order here this week -- wait for on-hand inventory or incoming shipments to clear first.`
       );
     }
   }

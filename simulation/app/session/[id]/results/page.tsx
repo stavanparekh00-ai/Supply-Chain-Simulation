@@ -16,7 +16,9 @@ import {
   YAxis,
 } from "recharts";
 import {
+  Badge,
   Card,
+  DataTable,
   MetricCard,
   PageHeader,
   PageShell,
@@ -185,6 +187,7 @@ export default function ResultsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showMilp, setShowMilp] = useState(true);
   const [showCommunity, setShowCommunity] = useState(true);
+  const [tab, setTab] = useState<"results" | "solver">("results");
 
   useEffect(() => {
     if (!gate.ready) return;
@@ -245,78 +248,86 @@ export default function ResultsPage() {
           subtitle={`${data.session.participant_name ?? "Participant"} · Results Summary`}
         />
 
-        <PerformanceHero data={data} />
+        <TabSwitcher tab={tab} onChange={setTab} />
 
-        <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-7">
-          <MetricCard
-            label="Total Cost"
-            value={money(data.totals.totalCost)}
-            highlight
-          />
-          <MetricCard
-            label="Network Cost"
-            value={money(data.totals.totalFixedCost + data.totals.totalTransportCost)}
-            sublabel={`${data.session.opened_facilities.length} facilit${data.session.opened_facilities.length === 1 ? "y" : "ies"} opened`}
-          />
-          <MetricCard
-            label="Procurement"
-            value={money(data.totals.totalProcurementCost)}
-          />
-          <MetricCard
-            label="Inventory Cost"
-            value={money(data.totals.totalHoldingCost)}
-          />
-          <MetricCard
-            label="Backorder Cost"
-            value={money(data.totals.totalBackorderCost)}
-            accent={data.totals.totalBackorderCost > 0}
-          />
-          <MetricCard
-            label="Forecast MAE"
-            value={Math.round(data.forecastAccuracy.mae).toLocaleString()}
-            sublabel={data.forecastAccuracy.methodName}
-          />
-          <MetricCard
-            label="Percentile"
-            value={
-              data.community.costPercentile
-                ? `Better than ${data.community.costPercentile.betterThanPercent}%`
-                : "—"
-            }
-            sublabel={
-              data.community.costPercentile
-                ? `Rank ${data.community.costPercentile.rank} of ${data.community.costPercentile.totalPlayers}`
-                : "Needs at least two completed runs"
-            }
-          />
-        </div>
+        {tab === "results" ? (
+          <>
+            <PerformanceHero data={data} />
 
-        <ComparisonControls
-          showMilp={showMilp}
-          showCommunity={showCommunity}
-          communityPlayers={data.community.completedPlayers}
-          onMilp={() => setShowMilp((value) => !value)}
-          onCommunity={() => setShowCommunity((value) => !value)}
-        />
+            <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-7">
+              <MetricCard
+                label="Total Cost"
+                value={money(data.totals.totalCost)}
+                highlight
+              />
+              <MetricCard
+                label="Network Cost"
+                value={money(data.totals.totalFixedCost + data.totals.totalTransportCost)}
+                sublabel={`${data.session.opened_facilities.length} facilit${data.session.opened_facilities.length === 1 ? "y" : "ies"} opened`}
+              />
+              <MetricCard
+                label="Procurement"
+                value={money(data.totals.totalProcurementCost)}
+              />
+              <MetricCard
+                label="Inventory Cost"
+                value={money(data.totals.totalHoldingCost)}
+              />
+              <MetricCard
+                label="Backorder Cost"
+                value={money(data.totals.totalBackorderCost)}
+                accent={data.totals.totalBackorderCost > 0}
+              />
+              <MetricCard
+                label="Forecast MAE"
+                value={Math.round(data.forecastAccuracy.mae).toLocaleString()}
+                sublabel={data.forecastAccuracy.methodName}
+              />
+              <MetricCard
+                label="Percentile"
+                value={
+                  data.community.costPercentile
+                    ? `Better than ${data.community.costPercentile.betterThanPercent}%`
+                    : "—"
+                }
+                sublabel={
+                  data.community.costPercentile
+                    ? `Rank ${data.community.costPercentile.rank} of ${data.community.costPercentile.totalPlayers}`
+                    : "Needs at least two completed runs"
+                }
+              />
+            </div>
 
-        <ResultsCharts
-          data={data}
-          showMilp={showMilp}
-          showCommunity={
-            showCommunity && data.community.completedPlayers > 0
-          }
-        />
+            <ComparisonControls
+              showMilp={showMilp}
+              showCommunity={showCommunity}
+              communityPlayers={data.community.completedPlayers}
+              onMilp={() => setShowMilp((value) => !value)}
+              onCommunity={() => setShowCommunity((value) => !value)}
+            />
 
-        <div className="mt-8 flex justify-center border-t border-[var(--card-border)] pt-6">
-          <SecondaryButton
-            onClick={() => {
-              clearActiveSessionId();
-              router.replace("/");
-            }}
-          >
-            Finish &amp; Start a New Run
-          </SecondaryButton>
-        </div>
+            <ResultsCharts
+              data={data}
+              showMilp={showMilp}
+              showCommunity={
+                showCommunity && data.community.completedPlayers > 0
+              }
+            />
+
+            <div className="mt-8 flex justify-center border-t border-[var(--card-border)] pt-6">
+              <SecondaryButton
+                onClick={() => {
+                  clearActiveSessionId();
+                  router.replace("/");
+                }}
+              >
+                Finish &amp; Start a New Run
+              </SecondaryButton>
+            </div>
+          </>
+        ) : (
+          <OracleSolverExplainer data={data} />
+        )}
       </PageShell>
     </>
   );
@@ -374,6 +385,38 @@ function PerformanceHero({ data }: { data: ResultsResponse }) {
         </div>
       </div>
     </Card>
+  );
+}
+
+function TabSwitcher({
+  tab,
+  onChange,
+}: {
+  tab: "results" | "solver";
+  onChange: (tab: "results" | "solver") => void;
+}) {
+  const tabs: { id: "results" | "solver"; label: string }[] = [
+    { id: "results", label: "Your Results" },
+    { id: "solver", label: "How the Oracle Was Built" },
+  ];
+  return (
+    <div className="mb-6 flex gap-1 border-b border-[var(--card-border)]">
+      {tabs.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          onClick={() => onChange(item.id)}
+          className={[
+            "-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition-colors",
+            tab === item.id
+              ? "border-[var(--navy)] text-[var(--navy)]"
+              : "border-transparent text-[var(--slate)] hover:text-[var(--navy)]",
+          ].join(" ")}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -1066,6 +1109,317 @@ function SupplierOrdersChart({ data }: { data: ResultsResponse }) {
         ))}
       </BarChart>
     </ChartCard>
+  );
+}
+
+const SUPPLIER_FACTS: {
+  name: string;
+  leadTime: string;
+  capacity: string;
+  unitCost: string;
+}[] = [
+  {
+    name: "Domestic Fab",
+    leadTime: "2 weeks",
+    capacity: "900 units / week / facility",
+    unitCost: "$20 / unit",
+  },
+  {
+    name: "Regional Partner",
+    leadTime: "3 weeks",
+    capacity: "700 units / week / facility",
+    unitCost: "$15 / unit",
+  },
+  {
+    name: "Overseas Manufacturer",
+    leadTime: "3 weeks",
+    capacity: "800 units / week / facility",
+    unitCost: "$10 / unit",
+  },
+];
+
+const CONSTRAINTS: {
+  name: string;
+  type: string;
+  appliesTo: string;
+  what: string;
+  why: string;
+}[] = [
+  {
+    name: "Non-negative orders",
+    type: "Hard",
+    appliesTo: "Everyone",
+    what: "Every order quantity placed with a supplier in a given week must be 0 or greater.",
+    why: "You cannot un-order units that were never ordered -- this just keeps the model physically meaningful.",
+  },
+  {
+    name: "Supplier weekly capacity",
+    type: "Hard",
+    appliesTo: "Everyone",
+    what: "An order to a supplier in one week cannot exceed that supplier's stated weekly capacity per facility (900 / 700 / 800 units).",
+    why: "Suppliers are real production and shipping operations with finite throughput -- you cannot buy your way past their ceiling in a single week no matter how much you're willing to pay.",
+  },
+  {
+    name: "Lead-time-respecting arrivals",
+    type: "Hard (mechanics)",
+    appliesTo: "Everyone",
+    what: "An order placed in week w from a supplier with lead time L physically arrives no earlier than week w + L. Nothing the solver or a player does can make a shipment arrive faster.",
+    why: "This is what makes the game (and the Oracle) genuinely about planning ahead -- if every order arrived instantly, there would be nothing to optimize.",
+  },
+  {
+    name: "Max inventory ceiling",
+    type: "Hard",
+    appliesTo: "Everyone (Oracle and players)",
+    what: "Projected on-hand inventory at a facility -- what's already there plus what's still arriving plus what you're about to order -- can never be pushed over 2,500 units.",
+    why: "Warehouses have finite physical space. This is enforced for players too, with a live warning before you can submit an order that would breach it, so nobody can win by hoarding infinite stock.",
+  },
+  {
+    name: "60% single-supplier diversification cap",
+    type: "Hard, Oracle-only",
+    appliesTo: "Oracle only",
+    what: "Across the whole run, no single supplier may account for more than 60% of a facility's total ordered volume.",
+    why: "Sourcing risk management: a facility that puts 100% of its volume on one supplier is one disruption away from a stockout. This is a deliberate benchmark design choice, not a law of the simulation -- players are free to concentrate their sourcing however they judge best, since exploring that tradeoff is part of the exercise.",
+  },
+  {
+    name: "No-lookahead information rule",
+    type: "Hard, decision-timing",
+    appliesTo: "Oracle only (players are naturally bound by this already)",
+    what: "Every decision -- which facilities to open, which forecasting method to use, and every week's order -- is made using only information available at or before the moment that decision has to be made. The Oracle never peeks at a week's actual demand before deciding that week's order, and it never picks a network or forecasting method by simulating candidates forward and choosing whichever happened to score lowest.",
+    why: "This is the whole point of the benchmark. An optimizer that gets to see the future isn't a fair comparison for a player who can't -- it would just prove hindsight is powerful, not that the plan was good. Every number the Oracle produces was earned under the same fog of war you play under.",
+  },
+];
+
+const REMOVED_CONSTRAINT_NOTE =
+  "An earlier version of this model also enforced a minimum inventory floor (400 units). It was removed: with a hard floor, the solver could treat a single week of cheap backlog as a “free pass” to relax the floor, which is a modeling artifact, not a real business rule. The holding cost ($2/unit/week) and backorder cost ($20/unit/week) already price the tradeoff between carrying too much and too little stock directly into the objective function -- a separate floor constraint was redundant at best and gameable at worst.";
+
+function OracleSolverExplainer({ data }: { data: ResultsResponse }) {
+  const totals = data.solverBenchmark.totals;
+  const facilities = data.solverBenchmark.openedFacilities.join(" + ");
+
+  return (
+    <div className="space-y-5">
+      <Card className="p-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-lg font-semibold text-[var(--navy)]">
+            The Oracle Solver
+          </h2>
+          <Badge tone="navy">No-lookahead benchmark</Badge>
+        </div>
+        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[var(--slate)]">
+          The Oracle is a standalone optimization model that plays this exact
+          scenario under the exact same rules a human player does: it does
+          not know next week&apos;s demand, it cannot see disruptions before
+          they happen, and it cannot pick a plan by simulating outcomes and
+          keeping whichever worked out best. It makes three kinds of
+          decisions -- which facilities to open, which forecasting method to
+          trust, and how much to order each week -- and every one of them
+          uses only information that would genuinely be available at the
+          moment that decision has to be made. Its result on this scenario:{" "}
+          <strong className="text-[var(--navy)]">{money(totals.totalCost)}</strong>{" "}
+          total cost, opening <strong className="text-[var(--navy)]">{facilities}</strong>.
+        </p>
+      </Card>
+
+      <Card className="p-6">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--slate)]">
+          Objective function
+        </h3>
+        <p className="mt-2 text-sm leading-relaxed text-[var(--slate)]">
+          The Oracle minimizes total landed cost across the whole 10-week
+          horizon:
+        </p>
+        <div className="mt-3 overflow-x-auto rounded-lg border border-[var(--card-border)] bg-slate-50/70 p-4">
+          <code className="text-xs leading-relaxed text-[var(--navy)] sm:text-sm">
+            minimize&nbsp; Fixed Cost + Transport Cost + &Sigma;<sub>weeks</sub> &Sigma;<sub>facilities</sub>{" "}
+            [ Procurement + Holding + Backorder ]
+          </code>
+        </div>
+        <div className="mt-4">
+          <DataTable
+            headers={["Cost component", "How it's computed", "Rate in this scenario"]}
+            rows={[
+              [
+                "Fixed cost",
+                "Sum of the one-time cost to open each selected facility",
+                "$125,000 / facility",
+              ],
+              [
+                "Transport cost",
+                "Each customer's weekly demand × the shipping rate from whichever open facility is cheapest for that customer",
+                "Set once at network design, paid every week",
+              ],
+              [
+                "Procurement cost",
+                "Order quantity × landed unit cost, summed across suppliers and facilities",
+                "$10–$20 / unit depending on supplier",
+              ],
+              [
+                "Holding cost",
+                "Units left on-hand at the end of the week × holding rate",
+                "$2 / unit / week",
+              ],
+              [
+                "Backorder cost",
+                "Unfilled demand carried into the next week × backorder rate",
+                "$20 / unit / week",
+              ],
+            ]}
+          />
+        </div>
+        <p className="mt-3 text-xs leading-relaxed text-[var(--slate-light)]">
+          Backorder cost is set 10x holding cost on purpose -- it should
+          always be cheaper to carry a bit of extra stock than to leave a
+          customer unfilled, which is what makes the ordering tradeoff below
+          meaningful instead of degenerate.
+        </p>
+      </Card>
+
+      <Card className="p-6">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--slate)]">
+          Stage 1 &middot; Network design (static, before week 1)
+        </h3>
+        <p className="mt-2 text-sm leading-relaxed text-[var(--slate)]">
+          Before any week is played, the Oracle picks which facilities to
+          open using only information that exists before week 1 -- nothing
+          about how the 10 weeks will actually unfold.
+        </p>
+        <ol className="mt-3 space-y-2.5 text-sm leading-relaxed text-[var(--slate)]">
+          <li>
+            <strong className="text-[var(--navy)]">1. Generate candidates.</strong>{" "}
+            Every combination of facilities is a candidate network.
+          </li>
+          <li>
+            <strong className="text-[var(--navy)]">2. Filter for feasibility.</strong>{" "}
+            A candidate is discarded if its suppliers cannot realistically
+            keep up with its assigned demand once real lead-time ramp-up is
+            accounted for -- nothing arrives in week 1 in this scenario, so
+            the binding constraint is how much can accumulate by week 2 and
+            beyond, not the naive steady-state weekly total. This check uses
+            only supplier lead times, capacities, and starting inventory --
+            all known before week 1 -- never a simulated outcome.
+          </li>
+          <li>
+            <strong className="text-[var(--navy)]">3. Minimize static cost.</strong>{" "}
+            Among the feasible candidates, the Oracle opens whichever has the
+            lowest fixed cost + transport cost. It does not simulate any
+            candidate through the 10 weeks to make this choice.
+          </li>
+        </ol>
+        <p className="mt-3 text-xs leading-relaxed text-[var(--slate-light)]">
+          Why the feasibility filter exists: without it, the cost-minimizing
+          answer could be a network that is structurally unable to meet
+          demand -- cheap on paper, but only because it's already sunk the
+          fixed cost before revealing it can't deliver. This mirrors a real
+          planning risk: committing capital to a network before checking it
+          can actually be supplied.
+        </p>
+      </Card>
+
+      <Card className="p-6">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--slate)]">
+          Stage 2 &middot; Forecasting method selection (static, before week 1)
+        </h3>
+        <p className="mt-2 text-sm leading-relaxed text-[var(--slate)]">
+          The Oracle chooses its forecasting method the same way a careful
+          player can: it backtests all six available methods (naive, 2/3/4-week
+          moving average, weighted moving average, exponential smoothing)
+          against the 20 weeks of historical demand shown on the forecast
+          page, and locks in whichever produced the lowest mean absolute
+          error (MAE). For this scenario, that was{" "}
+          <strong className="text-[var(--navy)]">exponential smoothing</strong>. The
+          method is fixed for the entire run -- it is never swapped mid-game
+          based on how the actual weeks turn out.
+        </p>
+      </Card>
+
+      <Card className="p-6">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--slate)]">
+          Stage 3 &middot; Weekly ordering (rolling, one week at a time)
+        </h3>
+        <p className="mt-2 text-sm leading-relaxed text-[var(--slate)]">
+          This is where the &quot;no-lookahead&quot; principle matters most.
+          Each week, for each open facility, the Oracle re-solves a small
+          optimization problem using only what it could actually know at
+          that moment: current on-hand inventory, current backlog, what&apos;s
+          already in transit, and its forecast of demand -- never that
+          week&apos;s or any future week&apos;s actual demand.
+        </p>
+        <p className="mt-3 text-sm leading-relaxed text-[var(--slate)]">
+          For every future week a checkpoint (one per lead time a supplier
+          could reach), it projects: <em>&quot;if I order nothing more, will my
+          on-hand position plus what&apos;s already arriving cover forecast
+          demand by then, with a safety margin?&quot;</em> The safety margin comes
+          from the newsvendor critical-fractile rule -- a classic inventory
+          formula that weighs the cost of holding one extra unit against the
+          cost of being one unit short:
+        </p>
+        <div className="mt-3 overflow-x-auto rounded-lg border border-[var(--card-border)] bg-slate-50/70 p-4">
+          <code className="text-xs leading-relaxed text-[var(--navy)] sm:text-sm">
+            z = &Phi;<sup>-1</sup>( backorder rate / (holding rate + backorder rate) ) = &Phi;<sup>-1</sup>(20 / 22) &asymp; 1.335
+            <br />
+            safety margin<sub>k</sub> = z &times; &sigma; &times; &radic;k
+          </code>
+        </div>
+        <p className="mt-3 text-sm leading-relaxed text-[var(--slate)]">
+          where &sigma; is that facility&apos;s demand volatility, estimated
+          only from history that has actually been revealed so far. Any
+          shortfall against that padded target becomes this week&apos;s order,
+          split across suppliers by cost (subject to the constraints below).
+          Once decided, the order is locked in -- next week starts the whole
+          process over with newly revealed information.
+        </p>
+      </Card>
+
+      <Card className="overflow-hidden">
+        <div className="border-b border-[var(--card-border)] px-6 py-4">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--slate)]">
+            Every constraint, and why it exists
+          </h3>
+        </div>
+        <div className="p-6">
+          <DataTable
+            headers={["Constraint", "Type", "Applies to", "What it does", "Why it exists"]}
+            rows={CONSTRAINTS.map((c) => [c.name, c.type, c.appliesTo, c.what, c.why])}
+          />
+          <p className="mt-4 text-xs leading-relaxed text-[var(--slate-light)]">
+            {REMOVED_CONSTRAINT_NOTE}
+          </p>
+        </div>
+      </Card>
+
+      <Card className="p-6">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--slate)]">
+          Suppliers the Oracle chooses between
+        </h3>
+        <p className="mt-2 text-sm leading-relaxed text-[var(--slate)]">
+          The same three suppliers available to every player -- the Oracle
+          gets no exclusive access or better pricing.
+        </p>
+        <div className="mt-3">
+          <DataTable
+            headers={["Supplier", "Lead time", "Capacity", "Unit cost"]}
+            rows={SUPPLIER_FACTS.map((s) => [s.name, s.leadTime, s.capacity, s.unitCost])}
+          />
+        </div>
+      </Card>
+
+      <Card className="p-6">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--slate)]">
+          The Oracle&apos;s final answer on this scenario
+        </h3>
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <MetricCard label="Network" value={facilities} />
+          <MetricCard label="Forecast method" value="Exp. smoothing" />
+          <MetricCard label="Fixed + transport" value={money(totals.fixedCost + totals.transportCost)} />
+          <MetricCard label="Procurement" value={money(totals.procurementCost)} />
+          <MetricCard label="Holding" value={money(totals.holdingCost)} />
+          <MetricCard label="Backorder" value={money(totals.backorderCost)} accent={totals.backorderCost > 0} />
+        </div>
+        <p className="mt-4 text-xs leading-relaxed text-[var(--slate-light)]">
+          {data.solverBenchmark.notice}
+        </p>
+      </Card>
+    </div>
   );
 }
 

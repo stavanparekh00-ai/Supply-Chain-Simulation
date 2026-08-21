@@ -1339,18 +1339,6 @@ function MilpSolverExplainer({ data }: { data: ResultsResponse }) {
             the whole check runs again with newly updated numbers.
           </p>
         </div>
-        <details className="mt-4 text-sm text-[var(--slate)]">
-          <summary className="cursor-pointer font-medium text-[var(--navy)]">
-            The exact math behind the safety cushion
-          </summary>
-          <div className="mt-3 overflow-x-auto rounded-lg border border-[var(--card-border)] bg-slate-50/70 p-4">
-            <code className="text-xs leading-relaxed text-[var(--navy)] sm:text-sm">
-              z = &Phi;<sup>-1</sup>( backorder rate / (holding rate + backorder rate) ) = &Phi;<sup>-1</sup>(20 / 22) &asymp; 1.335
-              <br />
-              cushion<sub>k</sub> = z &times; &sigma; &times; &radic;k
-            </code>
-          </div>
-        </details>
       </Card>
 
       <Card className="overflow-hidden">
@@ -1428,22 +1416,6 @@ function LessonsLearned() {
           cost). Skipping the cushion that protects against forecast error
           and lead-time gaps was the single biggest cost driver in this
           scenario.
-        </>
-      ),
-    },
-    {
-      title: "A more accurate forecast doesn't automatically save you",
-      body: (
-        <>
-          Paired with that same no-cushion ordering habit, swapping in each
-          of the six forecasting methods barely moved the needle in the
-          direction you&apos;d expect: naive forecasting produced the{" "}
-          <strong>cheapest</strong> of the six ($1,262,445), while exponential
-          smoothing -- the method with the best backtested accuracy -- produced
-          the <strong>worst</strong> ($1,384,080). Forecast accuracy only pays
-          off if the ordering policy leaves room to act on it; without a
-          safety cushion, a more &quot;correct&quot; forecast just means less
-          margin for error.
         </>
       ),
     },

@@ -1268,11 +1268,18 @@ function MilpSolverExplainer({ data }: { data: ResultsResponse }) {
           </li>
           <li>
             <strong className="text-[var(--navy)]">2. Filter for feasibility.</strong>{" "}
-            A candidate is discarded if its suppliers can&apos;t realistically
-            keep up with its assigned demand once real lead-time ramp-up is
-            factored in -- nothing arrives in week 1 here, so the binding
-            limit is how much can accumulate by week 2 onward, not a naive
-            steady-state weekly total.
+            A candidate is discarded if its suppliers physically can&apos;t
+            keep up with its assigned demand. Simply adding up every
+            supplier&apos;s weekly capacity (2,400/week here) overstates
+            what&apos;s actually available early on, because even the fastest
+            supplier takes 2 weeks to deliver -- nothing arrives at all in
+            week 1. So by week 2, a facility can have at most its 1,600
+            starting units plus one week of the fastest supplier&apos;s
+            capacity (900) = 2,500 units total, ever -- averaging out to
+            1,250/week by that point. That&apos;s the tightest constraint
+            across the whole run (later weeks have more time for deliveries
+            to catch up), so it&apos;s what actually caps how much demand a
+            network can support.
           </li>
           <li>
             <strong className="text-[var(--navy)]">3. Pick the cheapest feasible one.</strong>{" "}
@@ -1405,27 +1412,6 @@ function MilpSolverExplainer({ data }: { data: ResultsResponse }) {
 function LessonsLearned() {
   const insights = [
     {
-      title: "A little safety margin is worth a lot",
-      body: (
-        <>
-          To see what discipline is actually worth, this project also ran a
-          simple rule-based &quot;player&quot; through the identical simulation --
-          one that orders exactly its forecasted shortfall with{" "}
-          <strong>no safety cushion</strong>, cheapest supplier first, on the
-          same F3 + F4 network as the solver. It cost{" "}
-          <strong className="text-[var(--navy)]">$1,262,445</strong> --{" "}
-          <strong className="text-[var(--navy)]">85% more</strong> than the
-          solver&apos;s $681,295 -- almost entirely from backorder cost:{" "}
-          <strong className="text-[var(--navy)]">$670,500</strong> versus the
-          solver&apos;s $21,460, a 31x difference, even though it actually held{" "}
-          <strong>less</strong> inventory ($1,560 vs. $22,390 in holding
-          cost). Skipping the cushion that protects against forecast error
-          and lead-time gaps was the single biggest cost driver in this
-          scenario.
-        </>
-      ),
-    },
-    {
       title: "The cheapest network on paper isn't always the cheapest overall",
       body: (
         <>
@@ -1456,6 +1442,28 @@ function LessonsLearned() {
           60% diversification cap above: the cheapest supplier on a normal
           week isn&apos;t guaranteed to stay cheap, and full dependence on one
           leaves no way to react when it doesn&apos;t.
+        </>
+      ),
+    },
+    {
+      title: "Leaning on your most reliable supplier to bail you out is its own risk",
+      body: (
+        <>
+          The scenario scripts a second, different disruption: in week 9, an
+          equipment accident cuts the domestic supplier&apos;s capacity in
+          half. A test run that leaned on domestic (the fastest, most
+          trusted supplier) to place a big catch-up order whenever its
+          backlog grew hit this exactly wrong: by week 9, its backlog had
+          built up to{" "}
+          <strong className="text-[var(--navy)]">2,684 units</strong> -- the
+          highest point in its whole run -- and the domestic order it was
+          counting on to dig out was capped at{" "}
+          <strong className="text-[var(--navy)]">450 units instead of
+          the 900</strong> it ordered in every surrounding week. The solver
+          never faced this problem: because it never leans on one supplier
+          for a large share of any order, its own week 9 domestic orders
+          (109 and 87 units) were nowhere close to even the halved capacity
+          -- diversification meant it had no single lifeline to lose.
         </>
       ),
     },

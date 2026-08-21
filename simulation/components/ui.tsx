@@ -115,7 +115,7 @@ export function MetricCard({
     >
       <div
         className={[
-          "text-[11px] font-semibold uppercase tracking-wider",
+          "min-h-[2.2em] text-[11px] font-semibold uppercase leading-tight tracking-wider",
           highlight ? "text-[var(--navy)]" : "text-[var(--slate)]",
         ].join(" ")}
       >

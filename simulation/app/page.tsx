@@ -102,8 +102,8 @@ export default function WelcomePage() {
             You&apos;ll be making supply chain decisions for a manufacturer of automotive-grade
             microcontrollers across a 10-week planning horizon. Demand each week is uncertain,
             and a few supply disruptions will occur along the way. After the run, your results
-            are compared to an Oracle benchmark -- an optimization model that plays by the same
-            rules you do, deciding one week at a time with no visibility into future demand.
+            are compared to a MILP Solver benchmark -- an optimization model that plays by the
+            same rules you do, deciding one week at a time with no visibility into future demand.
           </p>
 
           <div className="mt-8 space-y-3 border-t border-[var(--card-border)] pt-6">

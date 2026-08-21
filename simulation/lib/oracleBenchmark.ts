@@ -241,7 +241,7 @@ export function buildOracleBenchmark(data: ScenarioData): OracleBenchmark {
   return {
     status: "verified_precomputed",
     notice:
-      "The Oracle's real decisions: network and forecasting method chosen from only " +
+      "The MILP Solver's real decisions: network and forecasting method chosen from only " +
       "pre-week-1 information, orders decided one week at a time with no visibility " +
       "into future demand -- the same rules a player plays by, not a perfect-foresight ceiling.",
     methodId: ORACLE_METHOD_ID,

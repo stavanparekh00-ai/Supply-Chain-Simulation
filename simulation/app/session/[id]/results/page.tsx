@@ -254,7 +254,7 @@ export default function ResultsPage() {
           <>
             <PerformanceHero data={data} />
 
-            <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-7">
+            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <MetricCard
                 label="Total Cost"
                 value={money(data.totals.totalCost)}
@@ -292,7 +292,7 @@ export default function ResultsPage() {
                 }
                 sublabel={
                   data.community.costPercentile
-                    ? `Better than this share · rank ${data.community.costPercentile.rank} of ${data.community.costPercentile.totalPlayers}`
+                    ? `Rank ${data.community.costPercentile.rank} of ${data.community.costPercentile.totalPlayers}`
                     : "Needs at least two completed runs"
                 }
               />
@@ -326,7 +326,7 @@ export default function ResultsPage() {
             </div>
           </>
         ) : (
-          <OracleSolverExplainer data={data} />
+          <MilpSolverExplainer data={data} />
         )}
       </PageShell>
     </>
@@ -354,8 +354,8 @@ function PerformanceHero({ data }: { data: ResultsResponse }) {
           <div className="mt-3 flex flex-wrap gap-2 text-xs text-[var(--slate)]">
             <span className="rounded-full bg-slate-100 px-3 py-1.5">
               {milpDelta >= 0
-                ? `${money(milpDelta)} above the Oracle`
-                : `${money(Math.abs(milpDelta))} below the Oracle`}
+                ? `${money(milpDelta)} above the MILP Solver`
+                : `${money(Math.abs(milpDelta))} below the MILP Solver`}
             </span>
             {averageDelta !== null && (
               <span className="rounded-full bg-slate-100 px-3 py-1.5">
@@ -397,7 +397,7 @@ function TabSwitcher({
 }) {
   const tabs: { id: "results" | "solver"; label: string }[] = [
     { id: "results", label: "Your Results" },
-    { id: "solver", label: "How the Oracle Was Built" },
+    { id: "solver", label: "How the MILP Solver Was Built" },
   ];
   return (
     <div className="mb-6 flex gap-1 border-b border-[var(--card-border)]">
@@ -447,7 +447,7 @@ function ComparisonControls({
       <div className="flex flex-wrap gap-2">
         <ToggleChip
           active={showMilp}
-          label="Oracle"
+          label="MILP Solver"
           color={MILP_COLOR}
           onClick={onMilp}
         />
@@ -560,7 +560,7 @@ function ResultsCharts({
             />
             {showMilp && (
               <Bar
-                dataKey="Oracle"
+                dataKey="MILP Solver"
                 fill={MILP_COLOR}
                 radius={[3, 3, 0, 0]}
               />
@@ -772,7 +772,7 @@ function ComparisonLines({
         <Line
           type="monotone"
           dataKey={milpKey}
-          name="Oracle"
+          name="MILP Solver"
           stroke={MILP_COLOR}
           strokeWidth={2.3}
           strokeDasharray="6 4"
@@ -812,7 +812,7 @@ function ForecastCharts({
     week: `W${row.week}`,
     "Your forecast": row.forecast,
     Actual: row.actual,
-    "Oracle forecast": milpByWeek.get(row.week) ?? null,
+    "MILP forecast": milpByWeek.get(row.week) ?? null,
   }));
   const showPeerBars =
     showCommunity && data.forecastAccuracy.peers.completedWithSameMethod > 0;
@@ -820,7 +820,7 @@ function ForecastCharts({
     {
       metric: "MAE",
       You: Math.round(data.forecastAccuracy.mae),
-      Oracle: Math.round(data.forecastAccuracy.milp.mae),
+      "MILP Solver": Math.round(data.forecastAccuracy.milp.mae),
       "Same-method average":
         data.forecastAccuracy.peers.averageMae === null
           ? null
@@ -829,7 +829,7 @@ function ForecastCharts({
     {
       metric: "RMSE",
       You: Math.round(data.forecastAccuracy.rmse),
-      Oracle: Math.round(data.forecastAccuracy.milp.rmse),
+      "MILP Solver": Math.round(data.forecastAccuracy.milp.rmse),
       "Same-method average":
         data.forecastAccuracy.peers.averageRmse === null
           ? null
@@ -848,7 +848,7 @@ function ForecastCharts({
             <p className="mt-1 text-xs text-[var(--slate)]">
               Actual demand, your forecast
               {showMilp
-                ? `, and the Oracle's (${data.forecastAccuracy.milp.methodName.toLowerCase()})`
+                ? `, and the MILP Solver's (${data.forecastAccuracy.milp.methodName.toLowerCase()})`
                 : ""}{" "}
               across {data.forecastAccuracy.observations} facility-weeks.
             </p>
@@ -875,7 +875,7 @@ function ForecastCharts({
             </span>
             {showMilp && (
               <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-800 shadow-sm">
-                Oracle MAE {Math.round(data.forecastAccuracy.milp.mae)} · RMSE{" "}
+                MILP MAE {Math.round(data.forecastAccuracy.milp.mae)} · RMSE{" "}
                 {Math.round(data.forecastAccuracy.milp.rmse)}
               </span>
             )}
@@ -930,7 +930,7 @@ function ForecastCharts({
                 {showMilp && (
                   <Line
                     type="monotone"
-                    dataKey="Oracle forecast"
+                    dataKey="MILP forecast"
                     stroke={MILP_COLOR}
                     strokeWidth={2}
                     strokeDasharray="2 2"
@@ -942,7 +942,7 @@ function ForecastCharts({
           </div>
           {showMilp && (
             <p className="mt-2 text-[11px] leading-relaxed text-[var(--slate-light)]">
-              The Oracle picks its forecasting method the same way you can -- by checking
+              The MILP Solver picks its forecasting method the same way you can -- by checking
               which method fit historical demand best -- and never sees a week&apos;s actual
               demand before deciding that week&apos;s order.
             </p>
@@ -991,13 +991,13 @@ function ForecastCharts({
                 </Bar>
                 {showMilp && (
                   <Bar
-                    dataKey="Oracle"
+                    dataKey="MILP Solver"
                     fill={MILP_COLOR}
                     radius={[4, 4, 0, 0]}
                     minPointSize={3}
                   >
                     <LabelList
-                      dataKey="Oracle"
+                      dataKey="MILP Solver"
                       position="top"
                       style={{ fontSize: 10, fill: "#92400e" }}
                     />
@@ -1023,7 +1023,7 @@ function ForecastCharts({
           <p className="mt-2 text-[11px] leading-relaxed text-[var(--slate-light)]">
             Lower error is better.
             {showMilp
-              ? " The Oracle's error comes from the same forecast uncertainty you face -- it's not zero."
+              ? " The MILP Solver's error comes from the same forecast uncertainty you face -- it's not zero."
               : ""}
             {showPeerBars
               ? " Same-method average compares peers who chose your forecasting method."
@@ -1163,7 +1163,7 @@ const CONSTRAINTS: ConstraintDef[] = [
   {
     name: "Max inventory ceiling",
     equation: <>OnHand<sub>f,w</sub> + Arriving<sub>f,w</sub> &le; 2,500</>,
-    why: "Warehouses have finite space. Since every supplier's lead time is 2+ weeks, an order placed this week can't land this week -- so this checks only what's already there. If it's already at the cap, no new order can be placed at that facility this week, for players and the Oracle alike.",
+    why: "Warehouses have finite space. Since every supplier's lead time is 2+ weeks, an order placed this week can't land this week -- so this checks only what's already there. If it's already at the cap, no new order can be placed at that facility this week, for players and the solver alike.",
   },
   {
     name: "60% single-supplier diversification cap",
@@ -1172,7 +1172,7 @@ const CONSTRAINTS: ConstraintDef[] = [
   },
 ];
 
-function OracleSolverExplainer({ data }: { data: ResultsResponse }) {
+function MilpSolverExplainer({ data }: { data: ResultsResponse }) {
   const totals = data.solverBenchmark.totals;
   const facilities = data.solverBenchmark.openedFacilities.join(" + ");
 
@@ -1181,18 +1181,19 @@ function OracleSolverExplainer({ data }: { data: ResultsResponse }) {
       <Card className="p-6">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-lg font-semibold text-[var(--navy)]">
-            The Oracle Solver
+            The MILP Solver
           </h2>
           <Badge tone="navy">No-lookahead benchmark</Badge>
         </div>
         <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[var(--slate)]">
-          The Oracle is a standalone optimization model that plays this exact
-          scenario under the exact same rules a human player does -- it never
-          sees a week&apos;s demand before deciding that week&apos;s order, and it
-          never picks a plan by simulating outcomes and keeping whichever
-          happened to work out best. It makes three kinds of decisions: which
-          facilities to open, which forecasting method to trust, and how much
-          to order each week. Its result on this scenario:{" "}
+          The MILP Solver is a standalone optimization model that plays this
+          exact scenario under the exact same rules a human player does -- it
+          never sees a week&apos;s demand before deciding that week&apos;s order,
+          and it never picks a plan by simulating outcomes and keeping
+          whichever happened to work out best. It makes three kinds of
+          decisions: which facilities to open, which forecasting method to
+          trust, and how much to order each week. Its result on this
+          scenario:{" "}
           <strong className="text-[var(--navy)]">{money(totals.totalCost)}</strong>{" "}
           total cost, opening <strong className="text-[var(--navy)]">{facilities}</strong>.
         </p>
@@ -1203,7 +1204,7 @@ function OracleSolverExplainer({ data }: { data: ResultsResponse }) {
           Objective function
         </h3>
         <p className="mt-2 text-sm leading-relaxed text-[var(--slate)]">
-          The Oracle minimizes total landed cost across the whole 10-week
+          The solver minimizes total landed cost across the whole 10-week
           horizon:
         </p>
         <div className="mt-3 overflow-x-auto rounded-lg border border-[var(--card-border)] bg-slate-50/70 p-4">
@@ -1244,12 +1245,6 @@ function OracleSolverExplainer({ data }: { data: ResultsResponse }) {
             ]}
           />
         </div>
-        <p className="mt-3 text-xs leading-relaxed text-[var(--slate-light)]">
-          Backorder cost is set 10x holding cost on purpose -- it should
-          always be cheaper to carry a bit of extra stock than to leave a
-          customer unfilled, which is what makes the ordering tradeoff below
-          meaningful instead of degenerate.
-        </p>
       </Card>
 
       <Card className="p-6">
@@ -1257,7 +1252,7 @@ function OracleSolverExplainer({ data }: { data: ResultsResponse }) {
           Stage 1 &middot; Network design
         </h3>
         <p className="mt-2 text-sm leading-relaxed text-[var(--slate)]">
-          Before any week is played, the Oracle decides which facilities to
+          Before any week is played, the solver decides which facilities to
           open.
         </p>
         <ol className="mt-3 space-y-2.5 text-sm leading-relaxed text-[var(--slate)]">
@@ -1275,16 +1270,10 @@ function OracleSolverExplainer({ data }: { data: ResultsResponse }) {
           </li>
           <li>
             <strong className="text-[var(--navy)]">3. Pick the cheapest feasible one.</strong>{" "}
-            Among what&apos;s left, the Oracle opens whichever combination has
+            Among what&apos;s left, the solver opens whichever combination has
             the lowest fixed cost + transport cost.
           </li>
         </ol>
-        <p className="mt-3 text-xs leading-relaxed text-[var(--slate-light)]">
-          Why the feasibility filter matters: without it, the cheapest-looking
-          network on paper could be one that structurally can&apos;t keep up
-          with demand -- cheap on the fixed-cost line, but far more expensive
-          once the backorders it causes are added in.
-        </p>
       </Card>
 
       <Card className="p-6">
@@ -1292,7 +1281,7 @@ function OracleSolverExplainer({ data }: { data: ResultsResponse }) {
           Stage 2 &middot; Forecasting method
         </h3>
         <p className="mt-2 text-sm leading-relaxed text-[var(--slate)]">
-          The Oracle backtests all six available methods (naive, 2/3/4-week
+          The solver backtests all six available methods (naive, 2/3/4-week
           moving average, weighted moving average, exponential smoothing)
           against the 20 weeks of historical demand shown on the forecast
           page, and locks in whichever produced the lowest average error. For
@@ -1307,7 +1296,7 @@ function OracleSolverExplainer({ data }: { data: ResultsResponse }) {
           Stage 3 &middot; Weekly ordering
         </h3>
         <p className="mt-2 text-sm leading-relaxed text-[var(--slate)]">
-          Each week, for each open facility, the Oracle asks one question
+          Each week, for each open facility, the solver asks one question
           separately for every supplier: <em>&quot;if I don&apos;t order anything
           more right now, will I have enough by the time this supplier could
           actually deliver?&quot;</em>
@@ -1361,13 +1350,6 @@ function OracleSolverExplainer({ data }: { data: ResultsResponse }) {
               cushion<sub>k</sub> = z &times; &sigma; &times; &radic;k
             </code>
           </div>
-          <p className="mt-2 text-xs leading-relaxed text-[var(--slate-light)]">
-            This is the newsvendor critical-fractile rule: it weighs the cost
-            of holding one extra unit against the cost of being one unit
-            short. &sigma; is that facility&apos;s demand volatility, estimated
-            only from history that has actually been revealed so far, and k
-            is how many weeks out the checkpoint is.
-          </p>
         </details>
       </Card>
 
@@ -1388,25 +1370,14 @@ function OracleSolverExplainer({ data }: { data: ResultsResponse }) {
             </div>
           ))}
         </div>
-        <div className="border-t border-[var(--card-border)] px-5 py-4">
-          <p className="text-xs leading-relaxed text-[var(--slate-light)]">
-            An earlier version also enforced a minimum inventory floor (400
-            units). It was removed: with a hard floor, the solver could treat
-            a single week of cheap backlog as a &quot;free pass&quot; to relax the
-            floor, which is a modeling artifact, not a real business rule.
-            Holding cost and backorder cost already price that tradeoff
-            directly into the objective function -- a separate floor
-            constraint was redundant at best and gameable at worst.
-          </p>
-        </div>
       </Card>
 
       <Card className="p-6">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--slate)]">
-          Suppliers the Oracle chooses between
+          Suppliers the solver chooses between
         </h3>
         <p className="mt-2 text-sm leading-relaxed text-[var(--slate)]">
-          The same three suppliers available to every player -- the Oracle
+          The same three suppliers available to every player -- the solver
           gets no exclusive access or better pricing.
         </p>
         <div className="mt-3">
@@ -1419,9 +1390,10 @@ function OracleSolverExplainer({ data }: { data: ResultsResponse }) {
 
       <Card className="p-6">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--slate)]">
-          The Oracle&apos;s final answer on this scenario
+          The solver&apos;s final answer on this scenario
         </h3>
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <MetricCard label="Total cost" value={money(totals.totalCost)} highlight />
           <MetricCard label="Network" value={facilities} />
           <MetricCard label="Forecast method" value="Exp. smoothing" />
           <MetricCard label="Fixed + transport" value={money(totals.fixedCost + totals.transportCost)} />
@@ -1429,9 +1401,6 @@ function OracleSolverExplainer({ data }: { data: ResultsResponse }) {
           <MetricCard label="Holding" value={money(totals.holdingCost)} />
           <MetricCard label="Backorder" value={money(totals.backorderCost)} accent={totals.backorderCost > 0} />
         </div>
-        <p className="mt-4 text-xs leading-relaxed text-[var(--slate-light)]">
-          {data.solverBenchmark.notice}
-        </p>
       </Card>
 
       <LessonsLearned />
@@ -1449,12 +1418,12 @@ function LessonsLearned() {
           simple rule-based &quot;player&quot; through the identical simulation --
           one that orders exactly its forecasted shortfall with{" "}
           <strong>no safety cushion</strong>, cheapest supplier first, on the
-          same F3 + F4 network as the Oracle. It cost{" "}
+          same F3 + F4 network as the solver. It cost{" "}
           <strong className="text-[var(--navy)]">$1,262,445</strong> --{" "}
           <strong className="text-[var(--navy)]">85% more</strong> than the
-          Oracle&apos;s $681,295 -- almost entirely from backorder cost:{" "}
+          solver&apos;s $681,295 -- almost entirely from backorder cost:{" "}
           <strong className="text-[var(--navy)]">$670,500</strong> versus the
-          Oracle&apos;s $21,460, a 31x difference, even though it actually held{" "}
+          solver&apos;s $21,460, a 31x difference, even though it actually held{" "}
           <strong>less</strong> inventory ($1,560 vs. $22,390 in holding
           cost). Skipping the cushion that protects against forecast error
           and lead-time gaps was the single biggest cost driver in this
@@ -1491,6 +1460,27 @@ function LessonsLearned() {
         </>
       ),
     },
+    {
+      title: "Chasing the cheapest supplier is a real risk, not a hypothetical",
+      body: (
+        <>
+          This scenario scripts a real disruption: in weeks 4-5, a 200%
+          tariff triples the overseas supplier&apos;s landed cost from $10 to
+          $30/unit. A test run sourcing 100% from that one supplier (the
+          cheapest under normal conditions) had no way to shift its volume
+          elsewhere -- it paid{" "}
+          <strong className="text-[var(--navy)]">$32,000 extra</strong> in
+          procurement cost across those two weeks alone, purely from staying
+          fully exposed to the supplier that got hit. Runs that split their
+          sourcing across suppliers absorbed the same tariff at a fraction of
+          the cost, simply because less of their volume was riding on the one
+          supplier that became expensive. It&apos;s the same logic behind the
+          60% diversification cap above: the cheapest supplier on a normal
+          week isn&apos;t guaranteed to stay cheap, and full dependence on one
+          leaves no way to react when it doesn&apos;t.
+        </>
+      ),
+    },
   ];
 
   return (
@@ -1507,14 +1497,6 @@ function LessonsLearned() {
             <p className="mt-2 text-sm leading-relaxed text-[var(--slate)]">{insight.body}</p>
           </div>
         ))}
-      </div>
-      <div className="border-t border-[var(--card-border)] bg-slate-50/70 px-6 py-4">
-        <p className="text-xs leading-relaxed text-[var(--slate-light)]">
-          None of these are Oracle-specific tricks -- they&apos;re just what the
-          cost structure of this scenario rewards and punishes, made visible
-          by comparing a disciplined plan against an undisciplined one under
-          the exact same rules.
-        </p>
       </div>
     </Card>
   );
@@ -1558,31 +1540,31 @@ function buildChartData(data: ResultsResponse) {
     {
       category: "Network",
       Player: data.totals.totalFixedCost + data.totals.totalTransportCost,
-      Oracle: data.solverBenchmark.totals.fixedCost + data.solverBenchmark.totals.transportCost,
+      "MILP Solver": data.solverBenchmark.totals.fixedCost + data.solverBenchmark.totals.transportCost,
       "Player average": community.networkCost,
     },
     {
       category: "Procurement",
       Player: data.totals.totalProcurementCost,
-      Oracle: data.solverBenchmark.totals.procurementCost,
+      "MILP Solver": data.solverBenchmark.totals.procurementCost,
       "Player average": community.procurementCost,
     },
     {
       category: "Inventory",
       Player: data.totals.totalHoldingCost,
-      Oracle: data.solverBenchmark.totals.holdingCost,
+      "MILP Solver": data.solverBenchmark.totals.holdingCost,
       "Player average": community.holdingCost,
     },
     {
       category: "Backorder",
       Player: data.totals.totalBackorderCost,
-      Oracle: data.solverBenchmark.totals.backorderCost,
+      "MILP Solver": data.solverBenchmark.totals.backorderCost,
       "Player average": community.backorderCost,
     },
     {
       category: "Total",
       Player: data.totals.totalCost,
-      Oracle: data.solverBenchmark.totals.totalCost,
+      "MILP Solver": data.solverBenchmark.totals.totalCost,
       "Player average": communityTotal,
     },
   ];

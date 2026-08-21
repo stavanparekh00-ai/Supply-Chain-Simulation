@@ -51,8 +51,8 @@ actually be available yet).
 
 | | Total cost | vs. solver |
 |---|---|---|
-| **MILP Solver** | $681,295 | -- |
-| Live community average (12 real + competent test runs) | ~$815,700 | +20% |
+| **MILP Solver** | $674,215 | -- |
+| Live community average (12 real + competent test runs) | ~$815,700 | +21% |
 
 Even disciplined, well-executed play consistently lands short of the true
 optimum -- which is the point: the gap is real, not an artifact of a

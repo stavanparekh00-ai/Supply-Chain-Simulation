@@ -106,9 +106,12 @@ def run_facility_rolling(
     for week in range(1, horizon + 1):
         forecast = forecast_facility_demand(data, method_id, assignment, facility_id, week)
         stddev = facility_demand_stddev(data, assignment, facility_id, week) if use_safety_margin else 0.0
-        orders = solve_week_order(
-            data, facility_id, week, on_hand, backlog, order_history, forecast, demand_stddev=stddev
-        )
+        if week == horizon:
+            orders = {s.id: 0 for s in data.suppliers}
+        else:
+            orders = solve_week_order(
+                data, facility_id, week, on_hand, backlog, order_history, forecast, demand_stddev=stddev
+            )
         if orders is None:
             reason = diagnose_infeasibility(
                 data, facility_id, week, on_hand, backlog, order_history, forecast

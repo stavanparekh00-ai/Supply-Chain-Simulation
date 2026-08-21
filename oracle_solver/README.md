@@ -233,8 +233,8 @@ decision; the checkpoint model above only ever sees the forecast.
 ## Results
 
 **`main.py` (the actual Oracle answer): network F3+F4, `exp_smoothing`
-forecasting -- total cost $681,295** ($250,000 fixed + $10,170 transport +
-$421,125 ordering, of which $377,275 is procurement, $22,390 holding,
+forecasting -- total cost $674,215** ($250,000 fixed + $10,170 transport +
+$414,045 ordering, of which $370,195 is procurement, $22,390 holding,
 $21,460 backorder). F3+F4 is the cheapest fixed+transport network among
 those passing the lead-time-aware capacity feasibility check -- a genuine
 **2-facility** answer.
@@ -341,5 +341,5 @@ would actually face.
   isn't true once lead times differ -- no supplier delivers anything in
   week 1 here at all. The exact bound is 1,250/week (binding at week 2),
   not 1,600 (2400/1.5). See "Network design" above for the full
-  derivation. Current answer: **F3+F4, exp_smoothing, $681,295** -- an
+  derivation. Current answer: **F3+F4, exp_smoothing, $674,215** -- an
   EXACT match with the hindsight-optimal, $0 gap.

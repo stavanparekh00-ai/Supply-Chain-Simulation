@@ -643,7 +643,10 @@ function ResultsCharts({
               tickLine={false}
               width={44}
             />
-            <Tooltip contentStyle={tooltipStyle} />
+            <Tooltip
+              formatter={(value) => Math.round(Number(value)).toLocaleString()}
+              contentStyle={tooltipStyle}
+            />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             <ComparisonLines
               showMilp={showMilp}
@@ -680,7 +683,10 @@ function ResultsCharts({
               tickLine={false}
               width={44}
             />
-            <Tooltip contentStyle={tooltipStyle} />
+            <Tooltip
+              formatter={(value) => Math.round(Number(value)).toLocaleString()}
+              contentStyle={tooltipStyle}
+            />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             <ComparisonLines
               showMilp={showMilp}

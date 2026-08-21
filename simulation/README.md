@@ -9,10 +9,12 @@ Postgres (Neon in production).
 
 Functional end-to-end: session creation, facility network design,
 forecasting method selection, the 10-week period-decision loop (backed by
-the realized-cost recursion), and a results summary. **Oracle comparison
-is not yet wired in** -- that depends on the separate solver project, which
-hasn't been built yet. The results page currently shows only the
-participant's own outcomes.
+the realized-cost recursion), and a results summary. The results page
+compares each run against the MILP Solver benchmark (`../oracle_solver/`)
+and the community of other completed runs, plus a dedicated tab that
+explains the solver's objective function, constraints, and design
+decisions. Live at
+[supply-chain-simulation-nu.vercel.app](https://supply-chain-simulation-nu.vercel.app).
 
 ## Local development
 
@@ -50,9 +52,9 @@ participant's own outcomes.
 ## Data source
 
 Scenario data (`data/scenario_data.json`) is a copy of
-`../shared_schema/scenario_data.json` -- the same canonical dataset the
-future Oracle solver will use, so both sides work from identical
-information. If the shared schema is updated, re-copy it here.
+`../shared_schema/scenario_data.json` -- the same canonical dataset
+`../oracle_solver/` uses, so both sides work from identical information.
+If the shared schema is updated, re-copy it here.
 
 ## Architecture notes
 

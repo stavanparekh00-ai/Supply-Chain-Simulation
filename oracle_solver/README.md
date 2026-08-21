@@ -1,10 +1,13 @@
-# Oracle Solver (standalone, not yet wired into the simulation)
+# Oracle Solver (standalone; the live app's MILP Solver benchmark is a TS port of this)
 
 A PuLP-based rolling, no-lookahead solver, loading the same
 `shared_schema/scenario_data.json` the live simulation loads for players.
-**Not imported by or merged into `simulation/`** -- this is a standalone,
-independently runnable and testable package, per the top-level README's
-framing of the Oracle Solver as its own deliverable.
+**Not imported by or merged into `simulation/`** -- this Python package is
+the standalone, independently runnable and testable source of truth for
+the model. The live app's results page shows the same answer via
+`simulation/lib/oracleBenchmark.ts`, a hand-ported TypeScript recomputation
+of this solver's literal output (see that file's header for how to
+regenerate it after any scenario_data change).
 
 ## Run it
 
